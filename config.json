@@ -1,0 +1,26 @@
+[{
+    "url": "https://github.com/ebuzzing/EbzFormats.git",
+    "rebase" : [
+        {
+            "from": "master",
+            "to": "hotfix.*"
+        },
+        {
+            "from": "develop",
+            "to": "feature.*"
+        }
+    ]
+},
+{
+    "url": "https://github.com/ebuzzing/EbzPlatform.git",
+    "rebase" : [
+        {
+            "from": "master",
+            "to": "hotfix.*"
+        },
+        {
+            "from": "develop",
+            "to": "feature.*"
+        }
+    ]
+}]
