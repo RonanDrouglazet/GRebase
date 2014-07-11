@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GRebase</title>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style type="text/css">
+    .success {
+        color: #fff !important;
+        background-color: #5cb85c !important;
+        border-color: #4cae4c !important;
+    }
+    .warning {
+        color: #fff !important;
+        background-color: #f0ad4e !important;
+        border-color: #eea236 !important;
+    }
+    .danger {
+        color: #fff !important;
+        background-color: #d9534f !important;
+        border-color: #d43f3a !important;
+    }
+    .default {
+        color: #333 !important;
+        background-color: #fff !important;
+        border-color: #ccc !important;
+    }
+    </style>
+</head>
+<body>
+    <script type="text/javascript">
+        var STATUS = {
+            UNCHECKED: 1,
+            UP_TO_DATE: 2,
+            NEED_REBASE: 3,
+            REBASE_FAILED: 4
+        }
+
+        var updateUI = function(data) {
+            data.forEach(function(oProject, index) {
+                var nProject = document.getElementById(oProject.name);
+                if (!nProject) {
+                    $(document.body).append("<div id='" + oProject.name + "' class='panel-group'><h1>" + oProject.name + "</h1></div>");
+                }
+
+                oProject.branch.forEach(function(oBranch, i) {
+                    nProject = document.getElementById(oProject.name);
+                    if (nProject && !nProject.getElementsByClassName(oBranch.name + index).length) {
+                        $(nProject).append(
+                            "<div class='panel panel-default " + oBranch.name + index + "'>" +
+                                "<div class='panel-heading " + chooseColor(oBranch.status) + "'>" +
+                                    "<h4 class='panel-title'>" +
+                                        "<a data-toggle='collapse' data-parent='" + oProject.name + "' href='#" + oBranch.name.replace(".", "") + index + "'>" + oBranch.name + "</a>" +
+                                    "</h4>" +
+                                "</div>" +
+                                "<div id='" + oBranch.name.replace(".", "") + index + "' class='panel-collapse collapse'>" +
+                                    "<div class='panel-body'>" +
+                                        oBranch.name +
+                                    "</div>" +
+                                "</div>" +
+                            "</div>"
+                        )
+                    } else if (nProject) {
+                        var e = $("." + oBranch.name + index + " div").get(0);
+                        if (e) {
+                            e.className = "panel-heading " + chooseColor(oBranch.status);
+                        }
+                    }
+                });
+            });
+        }
+
+        var chooseColor = function(status) {
+            var color;
+            switch (status) {
+                case STATUS.UNCHECKED:
+                    color = "default";
+                break;
+
+                case STATUS.UP_TO_DATE:
+                    color = "success";
+                break;
+
+                case STATUS.NEED_REBASE:
+                    color = "warning";
+                break;
+
+                case STATUS.REBASE_FAILED:
+                    color = "danger";
+                break;
+            }
+            return color;
+        }
+
+        var socket = io(window.location.origin);
+        socket.on("update", function(data) {
+            updateUI(data);
+        });
+    </script>
+</body>
+</html>
