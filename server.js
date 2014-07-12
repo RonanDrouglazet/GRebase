@@ -29,7 +29,8 @@ var STATUS = {
     UNCHECKED: 1,
     UP_TO_DATE: 2,
     NEED_REBASE: 3,
-    REBASE_FAILED: 4
+    REBASE_FAILED: 4,
+    ONGOING: 5
 }
 
 var init = function() {
@@ -64,6 +65,7 @@ var checkEachProject = function(current) {
 
 var checkEachBranch = function(repo, current, done) {
     if (current < repo.branch.length) {
+        repo.branch[current].status = STATUS.ONGOING;
         socketIo.sockets.emit("update", config);
         exec("repos/" + repo.name, "git checkout " + repo.branch[current].name, function(err, stdout, stderr) {
             if (!err) {
@@ -163,9 +165,20 @@ var updateBranchList = function(done) {
                     }
                 }
 
+                var old = [];
+                if (config[index].branch) {
+                    old = config[index].branch.slice();
+                }
+
                 config[index].branch = [];
                 aBranch.forEach(function(branchName, i) {
-                    config[index].branch.push({name: branchName, status: STATUS.UNCHECKED});
+                    var status = STATUS.UNCHECKED;
+                    old.forEach(function(oldBranch) {
+                        if (oldBranch.name === branchName) {
+                            status = oldBranch.status;
+                        }
+                    });
+                    config[index].branch.push({name: branchName, status: status});
                 });
             }
             if (index === config.length - 1) {
