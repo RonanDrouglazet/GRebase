@@ -71,6 +71,7 @@ var checkEachBranch = function(repo, current, done) {
             if (!err) {
                 getRebaseOrigin(repo, repo.branch[current].name, function(rebaseOrigin) {
                     if (rebaseOrigin) {
+                        repo.branch[current].parent = rebaseOrigin;
                         exec("repos/" + repo.name, "git pull --rebase && git reset --hard origin/" + repo.branch[current].name + " && git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
                             if (err) {
                                 console.log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
@@ -125,7 +126,9 @@ var createConfig = function(json, current) {
                     });
                 } else {
                     console.warn(repo.name + " already exist, skip to the next repo");
-                    createConfig(json, current + 1);
+                    abortRebaseIfNeeded("repos/" + repo.name, function() {
+                        createConfig(json, current + 1);
+                    });
                 }
             });
         });
@@ -140,6 +143,12 @@ var gitCloneRepo = function(path, url, done) {
         done(err);
     });
 };
+
+var abortRebaseIfNeeded = function(path, done) {
+    exec(path, "git rebase --abort", function(err, stdout, stderr) {
+        done(err);
+    });
+}
 
 var getRebaseOrigin = function(repo, branchName, done) {
     var rebaseOrigin = null;
@@ -173,12 +182,14 @@ var updateBranchList = function(done) {
                 config[index].branch = [];
                 aBranch.forEach(function(branchName, i) {
                     var status = STATUS.UNCHECKED;
+                    var parent = "";
                     old.forEach(function(oldBranch) {
                         if (oldBranch.name === branchName) {
                             status = oldBranch.status;
+                            parent = oldBranch.parent;
                         }
                     });
-                    config[index].branch.push({name: branchName, status: status});
+                    config[index].branch.push({name: branchName, status: status, parent: parent});
                 });
             }
             if (index === config.length - 1) {

@@ -29,15 +29,20 @@ var updateUI = function(data) {
             if (nProject && !branchExist) {
                 $("#" + container + " ." + classColor).append(
                     "<div class='branch " + branchClassName + "'>" +
-                        "<span class='label label-" + classColor + "'>" + classColor.toUpperCase() + "</span><span>" + oBranch.name + "</span>" +
+                        "<span class='label label-" + classColor + "'>" + classColor.toUpperCase() + "</span><span>" + oBranch.name + ((oBranch.parent !== "") ?  " (" + oBranch.parent + ")" : "") + "</span>" +
                     "</div>"
                 );
             } else if (nProject) {
-                var span = $("." + branchClassName + " span").get(0);
+                var label = $("." + branchClassName + " span").get(0);
+                var branchName = $("." + branchClassName + " span").get(1);
                 var branch = $("." + branchClassName).get(0);
-                if (span) {
-                    span.className = "label label-" + classColor;
-                    span.innerHTML = classColor.toUpperCase();
+                if (label) {
+                    label.className = "label label-" + classColor;
+                    label.innerHTML = classColor.toUpperCase();
+                    branchName.innerHTML = oBranch.name;
+                    if (oBranch.parent !== "") {
+                        branchName.innerHTML += " (" + oBranch.parent + ")";
+                    }
                     if (branch.parentNode.className !== classColor || branch.parentNode.parentNode.parentNode.id !== container) {
                         $("#" + container + " ." + classColor).append(branch);
                     }
