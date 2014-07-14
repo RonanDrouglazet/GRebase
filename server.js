@@ -19,6 +19,7 @@ GRebase.use("/", express.static(__dirname + "/static/"))
 
 //socket io event for web interface
 socketIo.on("connection", function(socket) {
+    socket.on("rebase", askRebase);
     socket.emit("update", config);
 });
 
@@ -67,36 +68,63 @@ var checkEachBranch = function(repo, current, done) {
     if (current < repo.branch.length) {
         repo.branch[current].status = STATUS.ONGOING;
         socketIo.sockets.emit("update", config);
+
+        //checkout on branch
         exec("repos/" + repo.name, "git checkout " + repo.branch[current].name, function(err, stdout, stderr) {
             if (!err) {
-                getRebaseOrigin(repo, repo.branch[current].name, function(rebaseOrigin) {
-                    if (rebaseOrigin) {
-                        repo.branch[current].parent = rebaseOrigin;
-                        exec("repos/" + repo.name, "git pull --rebase && git reset --hard origin/" + repo.branch[current].name + " && git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
-                            if (err) {
-                                console.log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
-                                repo.branch[current].status = STATUS.REBASE_FAILED;
-                                exec("repos/" + repo.name, "git rebase --abort", function(err, stdout, stderr) {
-                                    checkEachBranch(repo, current + 1, done);
+                // reset and pull
+                exec("repos/" + repo.name, "git reset --hard origin/" + repo.branch[current].name + " && git pull --rebase", function(err, stdout, stderr) {
+                    //get last commit author
+                    exec("repos/" + repo.name, "git --no-pager show -s --format='%an <%ae>' HEAD", function(err, stdout, stderr) {
+                        repo.branch[current].lastCommit = stdout;
+
+                        // get the rebase origin from config rules for this branch
+                        getRebaseOrigin(repo, repo.branch[current].name, function(rebaseOrigin) {
+                            if (rebaseOrigin) {
+                                repo.branch[current].parent = rebaseOrigin;
+
+                                // try to rebase from origin
+                                exec("repos/" + repo.name, "git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
+                                    if (err) {
+                                        console.log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
+                                        repo.branch[current].status = STATUS.REBASE_FAILED;
+                                        exec("repos/" + repo.name, "git rebase --abort", function(err, stdout, stderr) {
+                                            checkEachBranch(repo, current + 1, done);
+                                        });
+                                    } else {
+                                        if (stdout.endsWith("is up to date.\n")) {
+                                            console.log("UP TO DATE " + repo.branch[current].name);
+                                            repo.branch[current].status = STATUS.UP_TO_DATE;
+                                            checkEachBranch(repo, current + 1, done);
+                                        } else {
+                                            console.log("REBASE NEEDED FOR " + repo.branch[current].name);
+                                            repo.branch[current].status = STATUS.NEED_REBASE;
+
+                                            if (repo.branch[current].rebase) {
+                                                repo.branch[current].rebase = false;
+                                                //create a backup branch and push -f
+                                                exec("repos/" + repo.name, "git reset --hard origin/" + repo.branch[current].name +
+                                                    " && git branch -f " + repo.branch[current].name + "_backup && git rebase origin/" + rebaseOrigin +
+                                                    " && git push -f", function(err, stdout, stderr) {
+                                                    if (!err) {
+                                                        repo.branch[current].status = STATUS.UP_TO_DATE;
+                                                    }
+                                                    checkEachBranch(repo, current + 1, done);
+                                                });
+                                            } else {
+                                                checkEachBranch(repo, current + 1, done);
+                                            }
+                                        }
+                                    }
                                 });
                             } else {
-                                if (stdout.endsWith("is up to date.\n")) {
-                                    console.log("UP TO DATE " + repo.branch[current].name);
-                                    repo.branch[current].status = STATUS.UP_TO_DATE;
-                                } else {
-                                    console.log("REBASE NEEDED FOR " + repo.branch[current].name);
-                                    repo.branch[current].status = STATUS.NEED_REBASE;
-                                }
+                                console.log(repo.branch[current].name + " --> no rebase origin for this branch");
+                                repo.branch[current].status = STATUS.UNCHECKED;
                                 checkEachBranch(repo, current + 1, done);
                             }
                         });
-                    } else {
-                        console.log(repo.branch[current].name + " --> no rebase origin for this branch");
-                        repo.branch[current].status = STATUS.UNCHECKED;
-                        checkEachBranch(repo, current + 1, done);
-                    }
+                    });
                 });
-
             } else {
                 console.log(err);
                 checkEachBranch(repo, current + 1, done);
@@ -136,6 +164,19 @@ var createConfig = function(json, current) {
         config = json;
         startProcess();
     }
+};
+
+var askRebase = function(data) {
+    config.forEach(function(project, indexP) {
+        if (project.name === data.from) {
+            project.branch.forEach(function(branch, indexB) {
+                if (branch.name.replace(".", "") === data.on) {
+                    console.log("--> Ask rebase for", branch.name);
+                    config[indexP].branch[indexB].rebase = true;
+                }
+            });
+        }
+    });
 };
 
 var gitCloneRepo = function(path, url, done) {
@@ -181,15 +222,13 @@ var updateBranchList = function(done) {
 
                 config[index].branch = [];
                 aBranch.forEach(function(branchName, i) {
-                    var status = STATUS.UNCHECKED;
-                    var parent = "";
+                    var newBranch = {name: branchName, status: STATUS.UNCHECKED, parent: "", lastCommit: ""};
                     old.forEach(function(oldBranch) {
                         if (oldBranch.name === branchName) {
-                            status = oldBranch.status;
-                            parent = oldBranch.parent;
+                            newBranch = oldBranch;
                         }
                     });
-                    config[index].branch.push({name: branchName, status: status, parent: parent});
+                    config[index].branch.push(newBranch);
                 });
             }
             if (index === config.length - 1) {

@@ -1,6 +1,8 @@
 GRebase
 =======
 
+![GRebase](http://img4.hostingpics.net/pics/936116new.png)
+
 Check the rebase status on all of your repository branch from her parent and do a rebase on a branch with one click (backup too)
 
 When you have a big project with a lot of feature branch based for exemple on your develop branch, or some fix branch based on master branch
