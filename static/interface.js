@@ -75,6 +75,10 @@ var updateUI = function(data) {
                 }
             }
         });
+
+        if (nProject) {
+            cleanBranchIfNoRemote(oProject);
+        }
     });
 }
 
@@ -84,6 +88,21 @@ var askRebase = function() {
     socket.emit("rebase", {on: targetBranch, from:targetProject});
     $(this).tooltip("destroy");
     $(this).remove();
+}
+
+var cleanBranchIfNoRemote = function(project) {
+    $("#" + project.name + " .branch").each(function(index, nBranch) {
+        var isExist = false;
+        var nBranchName = nBranch.className.replace("branch ", "").replace(project.name + "_", "");
+        project.branch.forEach(function(oBranch) {
+            if (oBranch.name.replace(".", "") === nBranchName) {
+                isExist = true;
+            }
+        });
+        if (!isExist) {
+            $(nBranch).remove();
+        }
+    });
 }
 
 // choose a color / container from branch status

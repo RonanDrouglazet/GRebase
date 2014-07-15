@@ -204,35 +204,39 @@ var getRebaseOrigin = function(repo, branchName, done) {
 
 var updateBranchList = function(done) {
     config.forEach(function(repo, index) {
-        exec("repos/" + repo.name, "git branch -r", function(err, stdout, stderr) {
-            if (!err && stdout) {
-                var aBranch = stdout.replace(/\s+origin\/HEAD.+/g, "").split("\n");
-                for (i = 0; i < aBranch.length; ++i) {
-                    if (aBranch[i] === "") {
-                        aBranch.splice(i--, 1);
-                    } else {
-                        aBranch[i] = aBranch[i].split("/")[1];
-                    }
-                }
-
-                var old = [];
-                if (config[index].branch) {
-                    old = config[index].branch.slice();
-                }
-
-                config[index].branch = [];
-                aBranch.forEach(function(branchName, i) {
-                    var newBranch = {name: branchName, status: STATUS.UNCHECKED, parent: "", lastCommit: ""};
-                    old.forEach(function(oldBranch) {
-                        if (oldBranch.name === branchName) {
-                            newBranch = oldBranch;
+        exec("repos/" + repo.name, "git remote update --prune", function(err) {
+            if (!err) {
+                exec("repos/" + repo.name, "git branch -r", function(err, stdout, stderr) {
+                    if (!err && stdout) {
+                        var aBranch = stdout.replace(/\s+origin\/HEAD.+/g, "").split("\n");
+                        for (i = 0; i < aBranch.length; ++i) {
+                            if (aBranch[i] === "") {
+                                aBranch.splice(i--, 1);
+                            } else {
+                                aBranch[i] = aBranch[i].split("/")[1];
+                            }
                         }
-                    });
-                    config[index].branch.push(newBranch);
+
+                        var old = [];
+                        if (config[index].branch) {
+                            old = config[index].branch.slice();
+                        }
+
+                        config[index].branch = [];
+                        aBranch.forEach(function(branchName, i) {
+                            var newBranch = {name: branchName, status: STATUS.UNCHECKED, parent: "", lastCommit: ""};
+                            old.forEach(function(oldBranch) {
+                                if (oldBranch.name === branchName) {
+                                    newBranch = oldBranch;
+                                }
+                            });
+                            config[index].branch.push(newBranch);
+                        });
+                    }
+                    if (index === config.length - 1) {
+                        done(err);
+                    }
                 });
-            }
-            if (index === config.length - 1) {
-                done(err);
             }
         });
     });
