@@ -10,15 +10,7 @@ var STATUS = {
 // update interface (branch..)
 var updateUI = function(data) {
     data.forEach(function(oProject, index) {
-        var nProject = document.getElementById(oProject.name);
-        if (!nProject) {
-            $(".main").append("<div id='" +
-                oProject.name +
-                "'><h2 class='sub-header' >" +
-                oProject.name +
-                "</h2><div class='table-responsive'><div class='success'></div><div class='warning'></div><div class='danger'></div><div class='default'></div></div></div>");
-            $(".nav-sidebar").append("<li><a href='#" + oProject.name + "'>" + oProject.name + "</a></li>")
-        }
+        var nProject = getProjectContainer(oProject.name);
 
         oProject.branch.forEach(function(oBranch, i) {
             nProject = document.getElementById(oProject.name);
@@ -27,22 +19,26 @@ var updateUI = function(data) {
             var branchExist = document.getElementsByClassName(branchClassName).length;
             var classColor = chooseColor(oBranch.status);
             var container = (oBranch.status === STATUS.ONGOING) ? "ongoing" : oProject.name;
+            var parentProjectName = (oBranch.parent !== "") ?  " (" + oBranch.parent + ")" : "";
+            var button = (oBranch.status === STATUS.NEED_REBASE && !oBranch.rebase) ? "<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>" : "";
 
             oBranch.lastCommit = oBranch.lastCommit.replace("<", "(").replace(">", ")");
 
+            // create branch on interface
             if (nProject && !branchExist) {
                 $("#" + container + " ." + classColor).append(
                     "<div class='branch " + branchClassName + "'>" +
-                        "<span class='label label-" + classColor + "'>" + classColor.toUpperCase() + "</span><span>" + oBranch.name + ((oBranch.parent !== "") ?  " (" + oBranch.parent + ")" : "") + "</span>" +
-                        "<span class='text-muted' style='float:right;font-size:11px'>" + oBranch.lastCommit + "</span>" +
-                        (oBranch.status === STATUS.NEED_REBASE && !oBranch.rebase ? "<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>" : "") +
+                        "<span class='label label-" + classColor + "'>" + classColor.toUpperCase() + "</span><span>" + oBranch.name + parentProjectName + "</span>" +
+                        "<span class='text-muted' style='float:right;font-size:11px'>" + oBranch.lastCommit + "</span>" + button +
                     "</div>"
                 );
 
+                // if the branch are on a rebase status NEED_REBASE, we have a "rebase" button to activate
                 if (oBranch.status === STATUS.NEED_REBASE) {
                     $("." + branchClassName + " .glyphicon").tooltip();
                     $("." + branchClassName + " .glyphicon").click(askRebase);
                 }
+            // else update branch node with current infos
             } else if (nProject) {
                 var branch = $("." + branchClassName).get(0);
                 if (branch) {
@@ -56,18 +52,22 @@ var updateUI = function(data) {
                     branchName.innerHTML = oBranch.name;
                     lastCommit.innerHTML = oBranch.lastCommit;
 
+                    // rebase branch origin
                     if (oBranch.parent !== "") {
                         branchName.innerHTML += " (" + oBranch.parent + ")";
                     }
 
+                    // if the branch node are not on the right classColor container or on the right project (cf project "ongoing") move it
                     if (branch.parentNode.className !== classColor || branch.parentNode.parentNode.parentNode.id !== container) {
                         $("#" + container + " ." + classColor).append(branch);
                     }
 
+                    // if we have not a rebase button, and the branch need for it, put a rebase button. If a rebase was called from somewhere else, don't create the button
                     if (!rebaseButton && oBranch.status === STATUS.NEED_REBASE && !oBranch.rebase) {
                         $(branch).append("<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>");
                         $("." + branchClassName + " .glyphicon").tooltip();
                         $("." + branchClassName + " .glyphicon").click(askRebase);
+                    // else, if we have a rebase button, and don't currently need it, remove it
                     } else if (rebaseButton && oBranch.status !== STATUS.NEED_REBASE) {
                         $(rebaseButton).tooltip("destroy");
                         $(rebaseButton).remove();
@@ -76,12 +76,26 @@ var updateUI = function(data) {
             }
         });
 
+        // clean old branch when the remote ref was deleted
         if (nProject) {
             cleanBranchIfNoRemote(oProject);
         }
     });
 }
 
+// get or create project container
+var getProjectContainer = function(projectName) {
+    var container = document.getElementById(projectName);
+    if (!container) {
+        $(".main").append("<div id='[PN]'><h2 class='sub-header'>[PN]</h2>".replace(/\[PN\]/ig, projectName) +
+            "<div class='table-responsive'><div class='success'></div><div class='warning'></div><div class='danger'></div><div class='default'></div></div></div>");
+        $(".nav-sidebar").append("<li><a href='#[PN]'>[PN]</a></li>".replace(/\[PN\]/ig, projectName));
+        container = document.getElementById(projectName);
+    }
+    return container;
+}
+
+// ask a rebase on server for a target branch
 var askRebase = function() {
     var targetProject = this.parentNode.parentNode.parentNode.parentNode.id;
     var targetBranch = this.parentNode.className.replace("branch ", "").replace(targetProject + "_", "");
@@ -90,6 +104,7 @@ var askRebase = function() {
     $(this).remove();
 }
 
+// clean branch if whe have not a remote ref for it
 var cleanBranchIfNoRemote = function(project) {
     $("#" + project.name + " .branch").each(function(index, nBranch) {
         var isExist = false;

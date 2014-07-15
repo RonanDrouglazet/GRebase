@@ -34,6 +34,7 @@ var STATUS = {
     ONGOING: 5
 }
 
+// init, read config.json
 var init = function() {
     fs.readFile("config.json", function(err, data) {
         if (!err) {
@@ -44,6 +45,7 @@ var init = function() {
     });
 };
 
+// update branch list for each project before begin to check
 var startProcess = function() {
     updateBranchList(function(err) {
         if (!err) {
@@ -54,6 +56,7 @@ var startProcess = function() {
     });
 };
 
+// check each project find on config.json. For each, check all his branch
 var checkEachProject = function(current) {
     if (current < config.length) {
         checkEachBranch(config[current], 0, function() {
@@ -64,6 +67,7 @@ var checkEachProject = function(current) {
     }
 };
 
+// core ! checkout on branch, reset / pull / rebase it, and get last commit author from it. Determine the branch rebase status
 var checkEachBranch = function(repo, current, done) {
     if (current < repo.branch.length) {
         repo.branch[current].status = STATUS.ONGOING;
@@ -135,6 +139,7 @@ var checkEachBranch = function(repo, current, done) {
     }
 };
 
+// create "server" config from JSON
 var createConfig = function(json, current) {
     if (current < json.length) {
         fs.mkdir("repos", function(err) {
@@ -166,6 +171,7 @@ var createConfig = function(json, current) {
     }
 };
 
+// interface ask a rebase on branch, look for it and active rebase if find it
 var askRebase = function(data) {
     config.forEach(function(project, indexP) {
         if (project.name === data.from) {
@@ -179,18 +185,21 @@ var askRebase = function(data) {
     });
 };
 
+// clone a repo
 var gitCloneRepo = function(path, url, done) {
     exec(path, "git clone " + url, function(err, stdout, stderr) {
         done(err);
     });
 };
 
+// abort an ongoing rebase when server was killed
 var abortRebaseIfNeeded = function(path, done) {
     exec(path, "git rebase --abort", function(err, stdout, stderr) {
         done(err);
     });
-}
+};
 
+// get rebase origin for a branch from rules defined on config.json
 var getRebaseOrigin = function(repo, branchName, done) {
     var rebaseOrigin = null;
     repo.rebase.forEach(function(rules, index) {
@@ -202,6 +211,7 @@ var getRebaseOrigin = function(repo, branchName, done) {
     done(rebaseOrigin);
 };
 
+//update branch list from remote project, and keep previous status
 var updateBranchList = function(done) {
     config.forEach(function(repo, index) {
         exec("repos/" + repo.name, "git remote update --prune", function(err) {
