@@ -36,7 +36,7 @@ var STATUS = {
 
 // init, read config.json
 var init = function() {
-    fs.readFile("config.json", function(err, data) {
+    fs.readFile(__dirname + "/config.json", function(err, data) {
         if (!err) {
             createConfig(JSON.parse(data), 0);
         } else {
@@ -90,18 +90,18 @@ var checkEachBranch = function(repo, current, done) {
                                 // try to rebase from origin
                                 exec("repos/" + repo.name, "git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
                                     if (err) {
-                                        console.log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
+                                        //console.log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
                                         repo.branch[current].status = STATUS.REBASE_FAILED;
                                         exec("repos/" + repo.name, "git rebase --abort", function(err, stdout, stderr) {
                                             checkEachBranch(repo, current + 1, done);
                                         });
                                     } else {
                                         if (stdout.endsWith("is up to date.\n")) {
-                                            console.log("UP TO DATE " + repo.branch[current].name);
+                                            //console.log("UP TO DATE " + repo.branch[current].name);
                                             repo.branch[current].status = STATUS.UP_TO_DATE;
                                             checkEachBranch(repo, current + 1, done);
                                         } else {
-                                            console.log("REBASE NEEDED FOR " + repo.branch[current].name);
+                                            //console.log("REBASE NEEDED FOR " + repo.branch[current].name);
                                             repo.branch[current].status = STATUS.NEED_REBASE;
 
                                             if (repo.branch[current].rebase) {
@@ -122,7 +122,7 @@ var checkEachBranch = function(repo, current, done) {
                                     }
                                 });
                             } else {
-                                console.log(repo.branch[current].name + " --> no rebase origin for this branch");
+                                //console.log(repo.branch[current].name + " --> no rebase origin for this branch");
                                 repo.branch[current].status = STATUS.UNCHECKED;
                                 checkEachBranch(repo, current + 1, done);
                             }
@@ -142,7 +142,7 @@ var checkEachBranch = function(repo, current, done) {
 // create "server" config from JSON
 var createConfig = function(json, current) {
     if (current < json.length) {
-        fs.mkdir("repos", function(err) {
+        fs.mkdir(__dirname + "/repos", function(err) {
             var repo = json[current];
             var repoUrl = repo.url.replace(".git", "").split("/");
 
@@ -151,14 +151,14 @@ var createConfig = function(json, current) {
 
             fs.exists("repos/" + repo.name, function(exist) {
                 if (!exist) {
-                    console.log("clone repository " + repo.name + " ongoing...");
-                    console.log("This can take a short or very long time, depends of your repos size");
+                    //console.log("clone repository " + repo.name + " ongoing...");
+                    //console.log("This can take a short or very long time, depends of your repos size");
                     gitCloneRepo("repos/", repo.url, function(err) {
                         if (err) console.error("skip to the next repo", err);
                         createConfig(json, current + 1);
                     });
                 } else {
-                    console.warn(repo.name + " already exist, skip to the next repo");
+                    //console.warn(repo.name + " already exist, skip to the next repo");
                     abortRebaseIfNeeded("repos/" + repo.name, function() {
                         createConfig(json, current + 1);
                     });
@@ -262,7 +262,7 @@ var exec = function(localPath, command, done) {
     //console.log("Exec command: ", command);
     //console.log("Exec path: ", localPath);
 
-    cp.exec("cd " + localPath + " && " + command, function(error, stdout, stderr) {
+    cp.exec("cd " + __dirname + "/" + localPath + " && " + command, function(error, stdout, stderr) {
         if (stdout && stdout !== "") {
             //console.log("Exec stdout: ", stdout);
         }
