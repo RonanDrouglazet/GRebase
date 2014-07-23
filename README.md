@@ -1,7 +1,7 @@
 GRebase
 =======
 
-![GRebase](http://img4.hostingpics.net/pics/936116new.png)
+![GRebase](https://imagizer.imageshack.us/v2/1440x801q90/r/674/efed2a.png)
 
 Check the rebase status on all of your repository branch from her parent and do a rebase on a branch with one click (backup too)
 
