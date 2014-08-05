@@ -36,11 +36,7 @@ create `./config.json` with the repository to check like this:
         "rebase" : [
             {
                 "from": "master",
-                "to": "hotfix.*"
-            },
-            {
-                "from": "develop",
-                "to": "feature.*"
+                "to": "develop"
             }
         ]
     }]
