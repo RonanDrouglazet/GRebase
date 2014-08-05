@@ -20,6 +20,7 @@ GRebase.use("/", express.static(__dirname + "/static/"))
 //socket io event for web interface
 socketIo.on("connection", function(socket) {
     socket.on("rebase", askRebase);
+    socket.on("recover", askRecover);
     socket.emit("update", config);
 });
 
@@ -49,7 +50,9 @@ var init = function() {
 var startProcess = function() {
     updateBranchList(function(err) {
         if (!err) {
-            checkEachProject(0);
+            updateBackup(function() {
+                checkEachProject(0);
+            });
         } else {
             console.error(err);
         }
@@ -76,59 +79,75 @@ var checkEachBranch = function(repo, current, done) {
         //checkout on branch
         exec("repos/" + repo.name, "git checkout " + repo.branch[current].name, function(err, stdout, stderr) {
             if (!err) {
-                // reset and pull
-                exec("repos/" + repo.name, "git reset --hard origin/" + repo.branch[current].name + " && git pull --rebase", function(err, stdout, stderr) {
-                    //get last commit author
-                    exec("repos/" + repo.name, "git --no-pager show -s --format='%an <%ae>' HEAD", function(err, stdout, stderr) {
-                        repo.branch[current].lastCommit = stdout;
+                // if  a recover asked on this branch, reset it from backup and push on origin
+                if (repo.branch[current].recover) {
+                    repo.branch[current].recover = false;
+                    exec("repos/" + repo.name, "git reset --hard " + repo.branch[current].name + "_backup" +
+                        " && git push -f origin " + repo.branch[current].name, function(err, stdout, stderr) {
+                        if (!err) {
+                            repo.branch[current].status = STATUS.UNCHECKED;
+                        }
+                        // re check the current branch after the recover
+                        checkEachBranch(repo, current, done);
+                    });
+                } else {
+                   // reset and pull
+                    exec("repos/" + repo.name, "git reset --hard origin/" + repo.branch[current].name + " && git pull --rebase", function(err, stdout, stderr) {
+                        //get last commit author
+                        exec("repos/" + repo.name, "git --no-pager show -s --format='%an <%ae>' HEAD", function(err, stdout, stderr) {
+                            repo.branch[current].lastCommit = stdout;
 
-                        // get the rebase origin from config rules for this branch
-                        getRebaseOrigin(repo, repo.branch[current].name, function(rebaseOrigin) {
-                            if (rebaseOrigin) {
-                                repo.branch[current].parent = rebaseOrigin;
+                            // get the rebase origin from config rules for this branch
+                            getRebaseOrigin(repo, repo.branch[current].name, function(rebaseOrigin) {
+                                if (rebaseOrigin) {
+                                    repo.branch[current].parent = rebaseOrigin;
 
-                                // try to rebase from origin
-                                exec("repos/" + repo.name, "git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
-                                    if (err) {
-                                        //console.log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
-                                        repo.branch[current].status = STATUS.REBASE_FAILED;
-                                        exec("repos/" + repo.name, "git rebase --abort", function(err, stdout, stderr) {
-                                            checkEachBranch(repo, current + 1, done);
-                                        });
-                                    } else {
-                                        if (stdout.endsWith("is up to date.\n")) {
-                                            //console.log("UP TO DATE " + repo.branch[current].name);
-                                            repo.branch[current].status = STATUS.UP_TO_DATE;
-                                            checkEachBranch(repo, current + 1, done);
-                                        } else {
-                                            //console.log("REBASE NEEDED FOR " + repo.branch[current].name);
-                                            repo.branch[current].status = STATUS.NEED_REBASE;
-
-                                            if (repo.branch[current].rebase) {
-                                                repo.branch[current].rebase = false;
-                                                //create a backup branch and push -f
-                                                exec("repos/" + repo.name, "git reset --hard origin/" + repo.branch[current].name +
-                                                    " && git branch -f " + repo.branch[current].name + "_backup && git rebase origin/" + rebaseOrigin +
-                                                    " && git push -f", function(err, stdout, stderr) {
-                                                    if (!err) {
-                                                        repo.branch[current].status = STATUS.UP_TO_DATE;
-                                                    }
-                                                    checkEachBranch(repo, current + 1, done);
-                                                });
-                                            } else {
+                                    // try to rebase from origin
+                                    exec("repos/" + repo.name, "git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
+                                        if (err) {
+                                            //console.log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
+                                            repo.branch[current].status = STATUS.REBASE_FAILED;
+                                            exec("repos/" + repo.name, "git rebase --abort", function(err, stdout, stderr) {
                                                 checkEachBranch(repo, current + 1, done);
+                                            });
+                                        } else {
+                                            if (stdout.endsWith("is up to date.\n")) {
+                                                //console.log("UP TO DATE " + repo.branch[current].name);
+                                                repo.branch[current].status = STATUS.UP_TO_DATE;
+                                                checkEachBranch(repo, current + 1, done);
+                                            } else {
+                                                //console.log("REBASE NEEDED FOR " + repo.branch[current].name);
+                                                repo.branch[current].status = STATUS.NEED_REBASE;
+
+                                                // if rebase asked on this branch
+                                                if (repo.branch[current].rebase) {
+                                                    repo.branch[current].rebase = false;
+                                                    //create a backup branch and push -f
+                                                    exec("repos/" + repo.name, "git reset --hard origin/" + repo.branch[current].name +
+                                                        " && git branch -f " + repo.branch[current].name + "_backup && git rebase origin/" + rebaseOrigin +
+                                                        " && git push -f origin " + repo.branch[current].name, function(err, stdout, stderr) {
+                                                        if (!err) {
+                                                            repo.branch[current].status = STATUS.UP_TO_DATE;
+                                                            repo.branch[current].backup = config.backup[repo.url][repo.branch[current].name] = new Date().toLocaleString();
+                                                            writeBackup(config.backup);
+                                                        }
+                                                        checkEachBranch(repo, current + 1, done);
+                                                    });
+                                                } else {
+                                                    checkEachBranch(repo, current + 1, done);
+                                                }
                                             }
                                         }
-                                    }
-                                });
-                            } else {
-                                //console.log(repo.branch[current].name + " --> no rebase origin for this branch");
-                                repo.branch[current].status = STATUS.UNCHECKED;
-                                checkEachBranch(repo, current + 1, done);
-                            }
+                                    });
+                                } else {
+                                    //console.log(repo.branch[current].name + " --> no rebase origin for this branch");
+                                    repo.branch[current].status = STATUS.UNCHECKED;
+                                    checkEachBranch(repo, current + 1, done);
+                                }
+                            });
                         });
                     });
-                });
+                }
             } else {
                 console.log(err);
                 checkEachBranch(repo, current + 1, done);
@@ -173,12 +192,21 @@ var createConfig = function(json, current) {
 
 // interface ask a rebase on branch, look for it and active rebase if find it
 var askRebase = function(data) {
+    ask("rebase", data.from, data.on);
+};
+
+// interface ask a recover on branch, look for it and active recover if find it
+var askRecover = function(data) {
+    ask("recover", data.from, data.on);
+};
+
+var ask = function(asking, from, on) {
     config.forEach(function(project, indexP) {
-        if (project.name === data.from) {
+        if (project.name === from) {
             project.branch.forEach(function(branch, indexB) {
-                if (branch.name.replace(".", "") === data.on) {
-                    console.log("--> Ask rebase for", branch.name);
-                    config[indexP].branch[indexB].rebase = true;
+                if (branch.name.replace(".", "") === on) {
+                    console.log("--> Ask recover for", branch.name, "on", new Date());
+                    config[indexP].branch[indexB][asking] = true;
                 }
             });
         }
@@ -187,7 +215,9 @@ var askRebase = function(data) {
 
 // clone a repo
 var gitCloneRepo = function(path, url, done) {
+    console.log("git clone ongoing on", url, "please wait");
     exec(path, "git clone " + url, function(err, stdout, stderr) {
+        console.log("git clone finish on", url, err || "");
         done(err);
     });
 };
@@ -234,7 +264,7 @@ var updateBranchList = function(done) {
 
                         config[index].branch = [];
                         aBranch.forEach(function(branchName, i) {
-                            var newBranch = {name: branchName, status: STATUS.UNCHECKED, parent: "", lastCommit: ""};
+                            var newBranch = {name: branchName, status: STATUS.UNCHECKED, parent: "", lastCommit: "", backup: ""};
                             old.forEach(function(oldBranch) {
                                 if (oldBranch.name === branchName) {
                                     newBranch = oldBranch;
@@ -251,6 +281,53 @@ var updateBranchList = function(done) {
         });
     });
 };
+
+var updateBackup = function(done) {
+    readBackup(function(backup) {
+        config.forEach(function(repo, indexR) {
+            if (!backup[repo.url]) {
+                backup[repo.url] = {};
+            } else {
+                repo.branch.forEach(function(branch, indexB) {
+                    if (backup[repo.url][branch.name]) {
+                        config[indexR].branch[indexB].backup = backup[repo.url][branch.name];
+                    }
+                });
+            }
+        });
+        writeBackup(backup, done);
+    });
+}
+
+var readBackup = function(done) {
+    //TODO maybe check if backup branch contained in backup.json realy exist on local repo
+    var backupFile = __dirname + "/repos/backup.json";
+    if (config.backup) {
+        done(config.backup);
+    } else {
+        fs.readFile(backupFile, function(err, data) {
+            if (!err) {
+                config.backup = JSON.parse(data);
+                done(config.backup);
+            } else {
+                fs.appendFile(backupFile, {}, function(err) {
+                    if (!err) {
+                        config.backup = {};
+                        done(config.backup);
+                    }
+                });
+            }
+        });
+    }
+}
+
+var writeBackup = function(backup, done) {
+    fs.writeFile(__dirname + "/repos/backup.json", JSON.stringify(backup), function(err) {
+        if (!err && done) {
+            done();
+        }
+    });
+}
 
 // little helpers
 String.prototype.endsWith = function(suffix) {

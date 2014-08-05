@@ -20,7 +20,7 @@ var updateUI = function(data) {
             var classColor = chooseColor(oBranch.status);
             var container = (oBranch.status === STATUS.ONGOING) ? "ongoing" : oProject.name;
             var parentProjectName = (oBranch.parent !== "") ?  " (" + oBranch.parent + ")" : "";
-            var button = (oBranch.status === STATUS.NEED_REBASE && !oBranch.rebase) ? "<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>" : "";
+            var button = (oBranch.status === STATUS.NEED_REBASE && !oBranch.rebase) ? "<span class='glyphicon glyphicon-refresh rebase' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>" : "";
 
             oBranch.lastCommit = oBranch.lastCommit.replace("<", "(").replace(">", ")");
 
@@ -45,7 +45,8 @@ var updateUI = function(data) {
                     var label = $("." + branchClassName + " span").get(0);
                     var branchName = $("." + branchClassName + " span").get(1);
                     var lastCommit = $("." + branchClassName + " span").get(2);
-                    var rebaseButton = $("." + branchClassName + " span").get(3);
+                    var rebaseButton = $(branch).children(".rebase").get(0);
+                    var recoverButton = $(branch).children(".recover").get(0);
 
                     label.className = "label label-" + classColor;
                     label.innerHTML = classColor.toUpperCase();
@@ -64,13 +65,27 @@ var updateUI = function(data) {
 
                     // if we have not a rebase button, and the branch need for it, put a rebase button. If a rebase was called from somewhere else, don't create the button
                     if (!rebaseButton && oBranch.status === STATUS.NEED_REBASE && !oBranch.rebase) {
-                        $(branch).append("<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>");
-                        $("." + branchClassName + " .glyphicon").tooltip();
-                        $("." + branchClassName + " .glyphicon").click(askRebase);
+                        $(branch).append("<span class='glyphicon glyphicon-refresh rebase' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>");
+                        $(branch).children(".rebase").tooltip();
+                        $(branch).children(".rebase").click(askRebase);
                     // else, if we have a rebase button, and don't currently need it, remove it
                     } else if (rebaseButton && oBranch.status !== STATUS.NEED_REBASE) {
                         $(rebaseButton).tooltip("destroy");
                         $(rebaseButton).remove();
+                    }
+
+                    // if we have not a recover button, and the branch need for it, put a recover button.
+                    var backupTitle = "backup create on " + oBranch.backup;
+                    if (!recoverButton && oBranch.backup !== "") {
+                        $(branch).append("<span class='glyphicon glyphicon-plus recover' data-toggle='tooltip' data-placement='right' title='" + backupTitle + "'></span>");
+                        $(branch).children(".recover").tooltip();
+                        $(branch).children(".recover").click(askRecover);
+                    // else, update title if needed
+                    } else if (recoverButton && oBranch.status === STATUS.ONGOING) {
+                        $(recoverButton).tooltip("destroy");
+                        $(recoverButton).remove();
+                    } else if (recoverButton && $(recoverButton).attr("title") !== backupTitle) {
+                        $(recoverButton).attr("title", backupTitle);
                     }
                 }
             }
@@ -97,11 +112,18 @@ var getProjectContainer = function(projectName) {
 
 // ask a rebase on server for a target branch
 var askRebase = function() {
-    var targetProject = this.parentNode.parentNode.parentNode.parentNode.id;
-    var targetBranch = this.parentNode.className.replace("branch ", "").replace(targetProject + "_", "");
+    var targetProject = getProject(this);
+    var targetBranch = getBranch(this, targetProject);
     socket.emit("rebase", {on: targetBranch, from:targetProject});
     $(this).tooltip("destroy");
     $(this).remove();
+}
+
+// ask a recover on server for a target branch
+var askRecover = function() {
+    var targetProject = getProject(this);
+    var targetBranch = getBranch(this, targetProject);
+    socket.emit("recover", {on: targetBranch, from:targetProject});
 }
 
 // clean branch if whe have not a remote ref for it
@@ -142,6 +164,14 @@ var chooseColor = function(status) {
         break;
     }
     return color;
+}
+
+var getProject = function(button) {
+    return button.parentNode.parentNode.parentNode.parentNode.id;
+}
+
+var getBranch = function(button, project) {
+    return button.parentNode.className.replace("branch ", "").replace(project + "_", "");
 }
 
 //filter branch with input
