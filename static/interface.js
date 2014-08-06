@@ -114,16 +114,46 @@ var getProjectContainer = function(projectName) {
 var askRebase = function() {
     var targetProject = getProject(this);
     var targetBranch = getBranch(this, targetProject);
-    socket.emit("rebase", {on: targetBranch, from:targetProject});
-    $(this).tooltip("destroy");
-    $(this).remove();
+    // NEED REFACTO THESE FUNCTION
+    if ($('.modal-title').html() === "") {
+        $('.modal .btn-primary').click(ask);
+    }
+
+    $('.modal-title').html("Confirm Rebase");
+    $('.modal-body').html(targetBranch);
+    $('.modal').data("type", "rebase");
+    $('.modal').data("branch", targetBranch);
+    $('.modal').data("project", targetProject);
+    $('.modal').modal('show');
 }
 
 // ask a recover on server for a target branch
 var askRecover = function() {
     var targetProject = getProject(this);
     var targetBranch = getBranch(this, targetProject);
-    socket.emit("recover", {on: targetBranch, from:targetProject});
+    // NEED REFACTO THESE FUNCTION
+    if ($('.modal-title').html() === "") {
+        $('.modal .btn-primary').click(ask);
+    }
+
+    $('.modal-title').html("Confirm Recover");
+    $('.modal-body').html(targetBranch);
+    $('.modal').data("type", "recover");
+    $('.modal').data("branch", targetBranch);
+    $('.modal').data("project", targetProject);
+    $('.modal').modal('show');
+}
+
+var ask = function() {
+    var type = $('.modal').data("type");
+    var branch = $('.modal').data("branch");
+    var project = $('.modal').data("project");
+    socket.emit(type, {on: branch, from: project});
+    if (type === "rebase") {
+        $(branch + " .rebase").tooltip("destroy");
+        $(branch + " .rebase").remove();
+    }
+    $('.modal').modal('hide');
 }
 
 // clean branch if whe have not a remote ref for it

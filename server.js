@@ -205,7 +205,7 @@ var ask = function(asking, from, on) {
         if (project.name === from) {
             project.branch.forEach(function(branch, indexB) {
                 if (branch.name.replace(".", "") === on) {
-                    console.log("--> Ask recover for", branch.name, "on", new Date());
+                    console.log("--> Ask " + asking + " for", branch.name, "on", new Date());
                     config[indexP].branch[indexB][asking] = true;
                 }
             });
