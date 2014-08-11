@@ -36,7 +36,7 @@ var updateUI = function(data) {
                 // if the branch are on a rebase status NEED_REBASE, we have a "rebase" button to activate
                 if (oBranch.status === STATUS.NEED_REBASE) {
                     $("." + branchClassName + " .glyphicon").tooltip();
-                    $("." + branchClassName + " .glyphicon").click(askRebase);
+                    $("." + branchClassName + " .glyphicon").click(clickOnButton);
                 }
             // else update branch node with current infos
             } else if (nProject) {
@@ -67,7 +67,7 @@ var updateUI = function(data) {
                     if (!rebaseButton && oBranch.status === STATUS.NEED_REBASE && !oBranch.rebase) {
                         $(branch).append("<span class='glyphicon glyphicon-refresh rebase' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>");
                         $(branch).children(".rebase").tooltip();
-                        $(branch).children(".rebase").click(askRebase);
+                        $(branch).children(".rebase").click(clickOnButton);
                     // else, if we have a rebase button, and don't currently need it, remove it
                     } else if (rebaseButton && oBranch.status !== STATUS.NEED_REBASE) {
                         $(rebaseButton).tooltip("destroy");
@@ -79,7 +79,7 @@ var updateUI = function(data) {
                     if (!recoverButton && oBranch.backup !== "") {
                         $(branch).append("<span class='glyphicon glyphicon-plus recover' data-toggle='tooltip' data-placement='right' title='" + backupTitle + "'></span>");
                         $(branch).children(".recover").tooltip();
-                        $(branch).children(".recover").click(askRecover);
+                        $(branch).children(".recover").click(clickOnButton);
                     // else, update title if needed
                     } else if (recoverButton && oBranch.status === STATUS.ONGOING) {
                         $(recoverButton).tooltip("destroy");
@@ -110,48 +110,34 @@ var getProjectContainer = function(projectName) {
     return container;
 }
 
-// ask a rebase on server for a target branch
-var askRebase = function() {
+// ask a rebase / recover on server for a target branch
+var clickOnButton = function() {
     var targetProject = getProject(this);
     var targetBranch = getBranch(this, targetProject);
-    // NEED REFACTO THESE FUNCTION
+    var type = this.className.split(" ")[2];
+
     if ($('.modal-title').html() === "") {
         $('.modal .btn-primary').click(ask);
     }
 
-    $('.modal-title').html("Confirm Rebase");
+    $('.modal-title').html("Confirm " + type);
     $('.modal-body').html(targetBranch);
-    $('.modal').data("type", "rebase");
-    $('.modal').data("branch", targetBranch);
-    $('.modal').data("project", targetProject);
-    $('.modal').modal('show');
-}
+    $('.modal').data({
+        branch: targetBranch,
+        project: targetProject,
+        branchClass: "." + this.parentNode.className.replace("branch ", ""),
+        type: type
+    });
 
-// ask a recover on server for a target branch
-var askRecover = function() {
-    var targetProject = getProject(this);
-    var targetBranch = getBranch(this, targetProject);
-    // NEED REFACTO THESE FUNCTION
-    if ($('.modal-title').html() === "") {
-        $('.modal .btn-primary').click(ask);
-    }
-
-    $('.modal-title').html("Confirm Recover");
-    $('.modal-body').html(targetBranch);
-    $('.modal').data("type", "recover");
-    $('.modal').data("branch", targetBranch);
-    $('.modal').data("project", targetProject);
     $('.modal').modal('show');
 }
 
 var ask = function() {
-    var type = $('.modal').data("type");
-    var branch = $('.modal').data("branch");
-    var project = $('.modal').data("project");
-    socket.emit(type, {on: branch, from: project});
-    if (type === "rebase") {
-        $(branch + " .rebase").tooltip("destroy");
-        $(branch + " .rebase").remove();
+    var data = $('.modal').data();
+    socket.emit(data.type, {on: data.branch, from: data.project});
+    if (data.type === "rebase") {
+        $(data.branchClass).children(".rebase").tooltip("destroy");
+        $(data.branchClass).children(".rebase").remove();
     }
     $('.modal').modal('hide');
 }
