@@ -217,9 +217,10 @@ var ask = function(asking, from, on) {
 
 // clone a repo
 var gitCloneRepo = function(path, url, done) {
-    log("git clone ongoing on", url, "please wait");
-    exec(path, "git clone " + url, function(err, stdout, stderr) {
-        log("git clone finish on", url, err || "");
+    var sshUrl = url.replace("https://github.com/", "git@github.com:");
+    log("git clone ongoing on", sshUrl, "please wait");
+    exec(path, "git clone " + sshUrl, function(err, stdout, stderr) {
+        log("git clone finish on", sshUrl, err || "");
         done(err);
     });
 };
