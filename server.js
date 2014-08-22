@@ -38,7 +38,6 @@ var STATUS = {
 
 // init, read config.json
 var init = function() {
-    fs.writeFile("/tmp/grebase.log", "");
     fs.readFile(__dirname + "/config.json", function(err, data) {
         if (!err) {
             createConfig(JSON.parse(data), 0);
@@ -50,6 +49,7 @@ var init = function() {
 
 // update branch list for each project before begin to check
 var startProcess = function() {
+    fs.writeFile("/tmp/grebase.log", "");
     updateBranchList(function(err) {
         if (!err) {
             updateBackup(function() {
@@ -107,18 +107,18 @@ var checkEachBranch = function(repo, current, done) {
                                     // try to rebase from origin
                                     exec("repos/" + repo.name, "git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
                                         if (err) {
-                                            //log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
+                                            log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
                                             repo.branch[current].status = STATUS.REBASE_FAILED;
                                             exec("repos/" + repo.name, "git rebase --abort", function(err, stdout, stderr) {
                                                 checkEachBranch(repo, current + 1, done);
                                             });
                                         } else {
                                             if (stdout.endsWith("is up to date.\n")) {
-                                                //log("UP TO DATE " + repo.branch[current].name);
+                                                log("UP TO DATE " + repo.branch[current].name);
                                                 repo.branch[current].status = STATUS.UP_TO_DATE;
                                                 checkEachBranch(repo, current + 1, done);
                                             } else {
-                                                //log("REBASE NEEDED FOR " + repo.branch[current].name);
+                                                log("REBASE NEEDED FOR " + repo.branch[current].name);
                                                 repo.branch[current].status = STATUS.NEED_REBASE;
 
                                                 // if rebase asked on this branch
@@ -142,7 +142,7 @@ var checkEachBranch = function(repo, current, done) {
                                         }
                                     });
                                 } else {
-                                    //log(repo.branch[current].name + " --> no rebase origin for this branch");
+                                    log(repo.branch[current].name + " --> no rebase origin for this branch");
                                     repo.branch[current].status = STATUS.UNCHECKED;
                                     checkEachBranch(repo, current + 1, done);
                                 }
@@ -179,7 +179,7 @@ var createConfig = function(json, current) {
                         createConfig(json, current + 1);
                     });
                 } else {
-                    //log(repo.name + " already exist, skip to the next repo");
+                    log(repo.name + " already exist, skip to the next repo");
                     abortRebaseIfNeeded("repos/" + repo.name, function() {
                         createConfig(json, current + 1);
                     });
