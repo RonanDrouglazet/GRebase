@@ -93,7 +93,14 @@ var updateBranch = function(oBranch, branchData) {
 
         // if the branch node are not on the right classColor container or on the right project (cf project "ongoing") move it
         if (branch.parentNode.className !== branchData.classColor || branch.parentNode.parentNode.parentNode.id !== branchData.container) {
-            $("#" + branchData.container + " ." + branchData.classColor).append(branch);
+            if (branchData.container === "ongoing") {
+                $("#" + branchData.container + " ." + branchData.classColor).html("");
+                var copy = branch.cloneNode(true);
+                copy.className += "_ongoing";
+                $("#" + branchData.container + " ." + branchData.classColor).append(copy);
+            } else {
+                $("#" + branchData.container + " ." + branchData.classColor).append(branch);
+            }
         }
 
         // if we have not a rebase button, and the branch need for it, put a rebase button. If a rebase was called from somewhere else, don't create the button
