@@ -109,8 +109,14 @@ var checkEachBranch = function(repo, current, done) {
                                         if (err) {
                                             log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
                                             repo.branch[current].status = STATUS.REBASE_FAILED;
-                                            exec("repos/" + repo.name, "git rebase --abort", function(err, stdout, stderr) {
-                                                checkEachBranch(repo, current + 1, done);
+                                            //check with a merge if we really need a rebase, sometimes not..
+                                            exec("repos/" + repo.name, "git rebase --abort && git merge origin/" + rebaseOrigin, function(err, stdout, stderr) {
+                                                if (stdout === "Already up-to-date.\n") {
+                                                    repo.branch[current].status = STATUS.UP_TO_DATE;
+                                                }
+                                                exec("repos/" + repo.name, "git reset --hard origin/" + repo.branch[current].name, function(err, stdout, stderr) {
+                                                    checkEachBranch(repo, current + 1, done);
+                                                });
                                             });
                                         } else {
                                             if (stdout.endsWith("is up to date.\n")) {
