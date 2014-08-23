@@ -13,6 +13,12 @@ When no conflict, you can rebase your branch with on click, and they will create
 
 When conflict, you have to rebase manually the branch as usual
 
+Requirement
+=======
+
+    - [nodejs](http://nodejs.org)
+    - git + ssh key on host machine (connect with GithubApi comming later)
+
 Start
 =======
 
