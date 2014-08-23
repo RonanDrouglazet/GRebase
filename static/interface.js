@@ -210,6 +210,50 @@ var getBranch = function(button, project) {
     return button.parentNode.className.replace("branch ", "").replace(project + "_", "");
 }
 
+var fullscreen = function(bt) {
+    var goFS = bt.innerHTML === "start fullscreen" ? true : false;
+    bt.innerHTML = goFS ? "stop fullscreen" : "start fullscreen";
+    $(".sidebar").css("display", goFS ? "none" : "block");
+    $(".main").css({
+        width: goFS ? "100%" : "",
+        marginLeft: goFS ? "0" : ""
+    });
+    $("#ongoing").css({
+        position: goFS ? "fixed" : "",
+        top: goFS ? "-13px" : "",
+        zIndex: goFS ? "1100" : "",
+        boxShadow: goFS ? "3px 3px 5px 0px rgba(50, 50, 50, 0.3)" : "",
+        width: goFS ? "50%" : "",
+        textAlign: goFS ? "right" : "",
+        opacity: goFS ? "0.8" : ""
+    });
+    $("#ongoing h2").css({
+        color: goFS ? "#eee" : "",
+        paddingBottom: goFS ? "0" : "",
+        borderBottom: goFS ? "0" : ""
+    });
+
+    //http://stackoverflow.com/questions/20286540/chrome-returns-undefined-for-cancelfullscreen-and-webkitcancelfullscreen
+    var el = goFS ? document.documentElement : document;
+    var rfs = goFS ?
+    (el.requestFullScreen || el.webkitRequestFullScreen || el.mozRequestFullScreen) :
+    (el.cancelFullScreen || el.webkitCancelFullScreen || el.mozCancelFullScreen);
+    rfs.call(el);
+
+    var autoScroll = function(start) {
+        $(document.body).animate({scrollTop: start ? document.body.offsetHeight : -window.innerHeight}, document.body.offsetHeight * 30, "linear", autoScroll.bind(this, !start));
+    }
+
+    setTimeout(function() {
+        if (goFS) {
+            autoScroll(true);
+        } else {
+            $(document.body).stop();
+            $(document.body).animate({scrollTop: 0}, 500);
+        }
+    }, 1000);
+}
+
 //filter branch with input
 $(".form-control").on("input", function() {
     var r = new RegExp(this.value.replace(".", ""), "ig");
