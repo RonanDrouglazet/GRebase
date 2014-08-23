@@ -20,7 +20,7 @@ var updateUI = function(data) {
                 createBranch(oBranch, branchData);
             } else if (nProject) {
                 // else update branch node with current infos
-                updateBranch(oBranch, branchData);
+                updateBranch(oProject, oBranch, branchData);
             }
         });
 
@@ -40,7 +40,7 @@ var getBranchData = function(project, branch) {
         branchExist: document.getElementsByClassName(branchClassName).length,
         classColor: chooseColor(branch.status),
         container: (branch.status === STATUS.ONGOING) ? "ongoing" : project.name,
-        parentProjectName: (branch.parent !== "") ?  " (" + branch.parent + ")" : "",
+        parentBranchName: (branch.parent !== "") ?  " (" + branch.parent + ")" : "",
         button: (branch.status === STATUS.NEED_REBASE && !branch.rebase) ? "<span class='glyphicon glyphicon-refresh rebase' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>" : ""
     }
 }
@@ -60,8 +60,9 @@ var getProjectContainer = function(projectName) {
 var createBranch = function(oBranch, branchData) {
     $("#" + branchData.container + " ." + branchData.classColor).append(
         "<div class='branch " + branchData.branchClassName + "'>" +
-            "<span class='label label-" + branchData.classColor + "'>" + branchData.classColor.toUpperCase() + "</span><span>" + oBranch.name + branchData.parentProjectName + "</span>" +
-            "<span class='text-muted' style='float:right;font-size:11px'>" + oBranch.lastCommit + "</span>" + branchData.button +
+            "<span class='label label-" + branchData.classColor + "'>" + branchData.classColor.toUpperCase() + "</span><span>" + oBranch.name + branchData.parentBranchName + "</span>" +
+            "<span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'></span>" +
+            "<span class='text-muted pull-right' style='font-size:11px'>" + oBranch.lastCommit + "</span>" + branchData.button +
         "</div>"
     );
 
@@ -72,12 +73,13 @@ var createBranch = function(oBranch, branchData) {
     }
 }
 
-var updateBranch = function(oBranch, branchData) {
+var updateBranch = function(oProject, oBranch, branchData) {
     var branch = $("." + branchData.branchClassName).get(0);
     if (branch) {
         var label = $("." + branchData.branchClassName + " span").get(0);
         var branchName = $("." + branchData.branchClassName + " span").get(1);
-        var lastCommit = $("." + branchData.branchClassName + " span").get(2);
+        var missCommit = $("." + branchData.branchClassName + " span").get(2);
+        var lastCommit = $("." + branchData.branchClassName + " span").get(3);
         var rebaseButton = $(branch).children(".rebase").get(0);
         var recoverButton = $(branch).children(".recover").get(0);
 
@@ -101,6 +103,18 @@ var updateBranch = function(oBranch, branchData) {
             } else {
                 $("#" + branchData.container + " ." + branchData.classColor).append(branch);
             }
+        }
+
+        //tolltip on badge
+        if (missCommit.innerHTML === "") {
+            $(missCommit).tooltip();
+            $(missCommit).click(showDiff.bind(this, oProject.url, oBranch.name, oBranch.parent));
+        }
+        // if we have missings commits information on oBranch, fill badge
+        if (oBranch.missCommit) {
+            missCommit.innerHTML = oBranch.missCommit;
+        } else {
+            missCommit.innerHTML = "";
         }
 
         // if we have not a rebase button, and the branch need for it, put a rebase button. If a rebase was called from somewhere else, don't create the button
@@ -136,30 +150,35 @@ var clickOnButton = function() {
     var targetBranch = getBranch(this, targetProject);
     var type = this.className.split(" ")[2];
 
-    if ($('.modal-title').html() === "") {
-        $('.modal .btn-primary').click(ask);
+    if ($('.modalAsk .modal-title').html() === "") {
+        $('.modalAsk .btn-primary').click(ask);
     }
 
-    $('.modal-title').html("Confirm " + type);
-    $('.modal-body').html(targetBranch);
-    $('.modal').data({
+    $('.modalAsk .modal-title').html("Confirm " + type);
+    $('.modalAsk .modal-body').html(targetBranch);
+    $('.modalAsk').data({
         branch: targetBranch,
         project: targetProject,
         branchClass: "." + this.parentNode.className.replace("branch ", ""),
         type: type
     });
 
-    $('.modal').modal('show');
+    $('.modalAsk').modal('show');
 }
 
 var ask = function() {
-    var data = $('.modal').data();
+    var data = $('.modalAsk').data();
     socket.emit(data.type, {on: data.branch, from: data.project});
     if (data.type === "rebase") {
         $(data.branchClass).children(".rebase").tooltip("destroy");
         $(data.branchClass).children(".rebase").remove();
     }
-    $('.modal').modal('hide');
+    $('.modalAsk').modal('hide');
+}
+
+var showDiff = function(project, branch, parent) {
+    var compareUrl = project.replace(".git", "") + "/compare/" + branch + "..." + parent;
+    window.open(compareUrl, "", "width=1000, height=700");
 }
 
 // clean branch if whe have not a remote ref for it

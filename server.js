@@ -103,6 +103,7 @@ var checkEachBranch = function(repo, current, done) {
                             getRebaseOrigin(repo, repo.branch[current].name, function(rebaseOrigin) {
                                 if (rebaseOrigin) {
                                     repo.branch[current].parent = rebaseOrigin;
+                                    getMissingCommits(repo, current, rebaseOrigin);
 
                                     // try to rebase from origin
                                     exec("repos/" + repo.name, "git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
@@ -249,6 +250,19 @@ var getRebaseOrigin = function(repo, branchName, done) {
     });
     done(rebaseOrigin);
 };
+
+var getMissingCommits = function(repo, currentBranch, rebaseOrigin) {
+    exec("repos/" + repo.name, "git cherry origin/"+ repo.branch[currentBranch].name + " origin/" + rebaseOrigin, function(err, stdout, stderr) {
+        if (!err) {
+            var match = stdout.match(/\+/g);
+            if (match) {
+                repo.branch[currentBranch].missCommit = stdout.match(/\+/g).length;
+            } else {
+                repo.branch[currentBranch].missCommit = 0;
+            }
+        }
+    });
+}
 
 //update branch list from remote project, and keep previous status
 var updateBranchList = function(done) {
