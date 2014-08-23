@@ -42,7 +42,7 @@ var init = function() {
         if (!err) {
             createConfig(JSON.parse(data), 0);
         } else {
-            log("GReabase error: please put config.json on GRebase root directory");
+            log(true, ["GReabase error: please put config.json on GRebase root directory"]);
         }
     });
 };
@@ -56,7 +56,7 @@ var startProcess = function() {
                 checkEachProject(0);
             });
         } else {
-            log(err);
+            log(true, [err]);
         }
     });
 };
@@ -107,7 +107,7 @@ var checkEachBranch = function(repo, current, done) {
                                     // try to rebase from origin
                                     exec("repos/" + repo.name, "git rebase origin/" + rebaseOrigin, function(err, stdout, stderr) {
                                         if (err) {
-                                            log("REBASE AUTO FAILED FOR " + repo.branch[current].name);
+                                            log(false, ["REBASE AUTO FAILED FOR " + repo.branch[current].name]);
                                             repo.branch[current].status = STATUS.REBASE_FAILED;
                                             //check with a merge if we really need a rebase, sometimes not..
                                             exec("repos/" + repo.name, "git rebase --abort && git merge origin/" + rebaseOrigin, function(err, stdout, stderr) {
@@ -120,11 +120,11 @@ var checkEachBranch = function(repo, current, done) {
                                             });
                                         } else {
                                             if (stdout.endsWith("is up to date.\n")) {
-                                                log("UP TO DATE " + repo.branch[current].name);
+                                                log(false, ["UP TO DATE " + repo.branch[current].name]);
                                                 repo.branch[current].status = STATUS.UP_TO_DATE;
                                                 checkEachBranch(repo, current + 1, done);
                                             } else {
-                                                log("REBASE NEEDED FOR " + repo.branch[current].name);
+                                                log(false, ["REBASE NEEDED FOR " + repo.branch[current].name]);
                                                 repo.branch[current].status = STATUS.NEED_REBASE;
 
                                                 // if rebase asked on this branch
@@ -148,7 +148,7 @@ var checkEachBranch = function(repo, current, done) {
                                         }
                                     });
                                 } else {
-                                    log(repo.branch[current].name + " --> no rebase origin for this branch");
+                                    log(false, [repo.branch[current].name + " --> no rebase origin for this branch"]);
                                     repo.branch[current].status = STATUS.UNCHECKED;
                                     checkEachBranch(repo, current + 1, done);
                                 }
@@ -157,7 +157,7 @@ var checkEachBranch = function(repo, current, done) {
                     });
                 }
             } else {
-                log(err);
+                log(false, [err]);
                 checkEachBranch(repo, current + 1, done);
             }
         });
@@ -178,14 +178,14 @@ var createConfig = function(json, current) {
 
             fs.exists("repos/" + repo.name, function(exist) {
                 if (!exist) {
-                    log("clone repository " + repo.name + " ongoing...");
-                    log("This can take a short or very long time, depends of your repos size");
+                    log(true, ["clone repository " + repo.name + " ongoing..."]);
+                    log(true, ["This can take a short or very long time, depends of your repos size"]);
                     gitCloneRepo("repos/", repo.url, function(err) {
                         //if (err) log("skip to the next repo", err);
                         createConfig(json, current + 1);
                     });
                 } else {
-                    log(repo.name + " already exist, skip to the next repo");
+                    log(true, [repo.name + " already exist, skip to the next repo"]);
                     abortRebaseIfNeeded("repos/" + repo.name, function() {
                         createConfig(json, current + 1);
                     });
@@ -213,7 +213,7 @@ var ask = function(asking, from, on) {
         if (project.name === from) {
             project.branch.forEach(function(branch, indexB) {
                 if (branch.name.replace(".", "") === on) {
-                    log("--> Ask " + asking + " for", branch.name, "on", new Date());
+                    log(true, ["--> Ask " + asking + " for", branch.name, "on", new Date()]);
                     config[indexP].branch[indexB][asking] = true;
                 }
             });
@@ -224,9 +224,9 @@ var ask = function(asking, from, on) {
 // clone a repo
 var gitCloneRepo = function(path, url, done) {
     var sshUrl = url.replace("https://github.com/", "git@github.com:");
-    log("git clone ongoing on", sshUrl, "please wait");
+    log(true, ["git clone ongoing on", sshUrl, "please wait"]);
     exec(path, "git clone " + sshUrl, function(err, stdout, stderr) {
-        log("git clone finish on", sshUrl, err || "");
+        log(true, ["git clone finish on", sshUrl, err || ""]);
         done(err);
     });
 };
@@ -346,22 +346,28 @@ String.prototype.endsWith = function(suffix) {
 var exec = function(localPath, command, done) {
     cp.exec("cd " + __dirname + "/" + localPath + " && " + command, function(error, stdout, stderr) {
         if (error && error !== "") {
-            log("#########################");
-            log("Exec command: ", command);
-            log("Exec path: ", localPath);
-            log("Exec stderr: ", error);
+            log(false, ["#########################"]);
+            log(false, ["Exec command: ", command]);
+            log(false, ["Exec path: ", localPath]);
+            log(false, ["Exec stderr: ", error]);
         }
         done(error, stdout, stderr);
     });
 }
 
-var log = function() {
+var log = function(consoleLog, args) {
+    if (consoleLog) {
+        console.log.apply(console, args);
+    }
+    print.apply(this, args);
+}
+
+var print = function() {
     var args = Array.prototype.slice.call(arguments);
     fs.appendFileSync("/tmp/grebase.log", "\r\n");
     fs.appendFileSync("/tmp/grebase.log", args.join(" "));
 }
 
-
 init();
 serverIo.listen(process.env.PORT || 8080);
-log("now listening on port ", (process.env.PORT || 8080));
+log(true, ["now listening on port ", (process.env.PORT || 8080)]);
