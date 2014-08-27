@@ -266,6 +266,7 @@ var getMissingCommits = function(repo, currentBranch, rebaseOrigin) {
 
 //update branch list from remote project, and keep previous status
 var updateBranchList = function(done) {
+    config.updatedBranch = 0;
     config.forEach(function(repo, index) {
         exec("repos/" + repo.name, "git remote update --prune", function(err) {
             if (!err) {
@@ -295,8 +296,12 @@ var updateBranchList = function(done) {
                             });
                             config[index].branch.push(newBranch);
                         });
+
+                        config.updatedBranch++;
                     }
-                    if (index === config.length - 1) {
+
+                    //check if we have branch for all repo
+                    if (config.updatedBranch === config.length) {
                         done(err);
                     }
                 });
