@@ -290,3 +290,8 @@ var socket = io(window.location.origin);
 socket.on("update", function(data) {
     updateUI(data);
 });
+
+// if interface called with ?fullscreen on url GET param, auto active fullscreen
+if (window.location.search.indexOf("fullscreen") !== -1) {
+    $("#fullscreenBT").click();
+}
