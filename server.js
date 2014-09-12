@@ -1,25 +1,27 @@
 var express = require("express"),
 io = require("socket.io"),
 http = require("http"),
-fs = require("fs"),
-cp = require('child_process');
+grebase = require("./modules/grebase.js");
 
-var GRebase = express();
-var serverIo = http.createServer(GRebase);
+var app = express();
+var serverIo = http.createServer(app);
 var socketIo = io.listen(serverIo);
 
-//static
-GRebase.use("/", express.static(__dirname + "/static/"))
-.use("/log/", express.static("/tmp/"))
+// GRebase
+app.use(grebase.middleware(app, socketIo, express))
 
-//404 not found
+// 404 not found
 .use(function(req, res, next) {
     res.setHeader("Content-Type", "text/plain");
     res.send(404, "Not Found");
 });
 
+//static
+//app.use("/", express.static(__dirname + "/static/"))
+//.use("/log/", express.static("/tmp/"))
+
 //socket io event for web interface
-socketIo.on("connection", function(socket) {
+/*socketIo.on("connection", function(socket) {
     socket.on("rebase", askRebase);
     socket.on("recover", askRecover);
     socket.emit("update", config);
@@ -387,6 +389,6 @@ var print = function() {
     fs.appendFileSync("/tmp/grebase.log", args.join(" "));
 }
 
-init();
+init();*/
 serverIo.listen(process.env.PORT || 8080);
-log(true, ["now listening on port ", (process.env.PORT || 8080)]);
+//log(true, ["now listening on port ", (process.env.PORT || 8080)]);

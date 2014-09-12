@@ -9,26 +9,46 @@ var STATUS = {
 
 // update interface (branch..)
 var updateUI = function(data) {
-    data.forEach(function(oProject, index) {
+    data.repository.forEach(function(oProject, index) {
         var nProject = getProjectContainer(oProject.name);
 
-        oProject.branch.forEach(function(oBranch, i) {
-            var branchData = getBranchData(oProject, oBranch);
+        if (oProject.branch) {
+            oProject.branch.forEach(function(oBranch, i) {
+                var branchData = getBranchData(oProject, oBranch);
 
-            if (nProject && !branchData.branchExist) {
-                // create branch on interface
-                createBranch(oBranch, branchData);
-            } else if (nProject) {
-                // else update branch node with current infos
-                updateBranch(oProject, oBranch, branchData);
-            }
-        });
+                if (nProject && !branchData.branchExist) {
+                    // create branch on interface
+                    createBranch(oBranch, branchData);
+                } else if (nProject) {
+                    // else update branch node with current infos
+                    updateBranch(oProject, oBranch, branchData);
+                }
+            });
+        }
 
         if (nProject) {
             // clean old branch when the remote ref was deleted
             cleanBranchIfNoRemote(oProject);
+
+            if (!oProject.token) {
+                addConnectButton(nProject, index);
+            } else {
+                removeConnectButton(nProject);
+            }
         }
     });
+}
+
+var addConnectButton = function(project, id) {
+    if ($(project).children(".btn-success").length === 0) {
+        $(project).append("<button type='button' class='btn btn-success'>Connect you to start the process</button>").click(function() {
+            window.open("/getToken/" + id, "", "width=1000, height=700");
+        });
+    }
+}
+
+var removeConnectButton = function(nProject) {
+    $(nProject).children("button").remove();
 }
 
 var getBranchData = function(project, branch) {
