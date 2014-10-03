@@ -130,3 +130,7 @@ body {
 .glyphicon:hover {
   color: green;
 }
+.label {
+  width: 64px;
+  display: inline-block;
+}

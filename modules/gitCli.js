@@ -22,13 +22,14 @@ exports.checkout = function(repoName, branchName, done) {
     });
 };
 
-exports.recover = function(repoName, branchName, done) {
-    exports.exec("../repos/" + repoName, "git reset --hard " + branchName + "_backup" +
-        " && git push -f origin " + branchName, function(err, stdout, stderr) {
+exports.recover = function(repo, branchName, pushToken, done) {
+    repoUrl = repo.url.replace("https://", "https://" + pushToken + "@");
+    exports.exec("../repos/" + repo.name, "git reset --hard " + branchName + "_backup" +
+        " && git push -f " + repoUrl + " " + branchName, function(err, stdout, stderr) {
         if (!err) {
             done();
         } else {
-            console.log("recover error on", branchName, "(", repoName, ")");
+            console.log("recover error on", branchName, "(", repo.name, ")");
             console.log(err);
         }
     });
@@ -67,7 +68,7 @@ exports.rebase = function(repoName, rebaseOrigin, done) {
 };
 
 exports.merge = function(repoName, branchToMerge, done) {
-    exports.exec("../repos/" + repoName, "git merge origin/" + branchToMerge, function(err, stdout, stderr) {
+    exports.exec("../repos/" + repoName, "git merge --no-ff origin/" + branchToMerge, function(err, stdout, stderr) {
         if (stdout === "Already up-to-date.\n") {
             done(err, true);
         } else {
@@ -120,12 +121,13 @@ exports.getMissingCommits = function(repoName, branchName, rebaseOrigin, done) {
 // helper
 exports.exec = function(localPath, command, done) {
     cp.exec("cd " + __dirname + "/" + localPath + " && " + command, function(error, stdout, stderr) {
-        if (error && error !== "") {
+        //if (error && error !== "") {
             console.log("#########################");
             console.log("Exec command: ", command);
             console.log("Exec path: ", localPath);
             console.log("Exec stderr: ", error);
-        }
+            console.log("Exec stdout: ", stdout);
+        //}
         done(error, stdout, stderr);
     });
 };

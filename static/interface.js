@@ -18,10 +18,10 @@ var updateUI = function(data) {
 
                 if (nProject && !branchData.branchExist) {
                     // create branch on interface
-                    createBranch(oBranch, branchData);
+                    createBranch(oProject, oBranch, branchData);
                 } else if (nProject) {
                     // else update branch node with current infos
-                    updateBranch(oProject, oBranch, branchData);
+                    updateBranch(oBranch, branchData);
                 }
             });
         }
@@ -60,8 +60,7 @@ var getBranchData = function(project, branch) {
         branchExist: document.getElementsByClassName(branchClassName).length,
         classColor: chooseColor(branch.status),
         container: (branch.status === STATUS.ONGOING) ? "ongoing" : project.name,
-        parentBranchName: (branch.parent !== "") ?  " (" + branch.parent + ")" : "",
-        button: (branch.status === STATUS.NEED_REBASE && !branch.rebase) ? "<span class='glyphicon glyphicon-refresh rebase' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>" : ""
+        parentBranchName: (branch.parent !== "") ?  " (" + branch.parent + ")" : ""
     }
 }
 
@@ -77,31 +76,36 @@ var getProjectContainer = function(projectName) {
     return container;
 }
 
-var createBranch = function(oBranch, branchData) {
+var createBranch = function(oProject, oBranch, branchData) {
     $("#" + branchData.container + " ." + branchData.classColor).append(
         "<div class='branch " + branchData.branchClassName + "'>" +
-            "<span class='label label-" + branchData.classColor + "'>" + branchData.classColor.toUpperCase() + "</span><span>" + oBranch.name + branchData.parentBranchName + "</span>" +
-            "<span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'></span>" +
-            "<span class='text-muted pull-right' style='font-size:11px'>" + oBranch.lastCommit + "</span>" + branchData.button +
+            "<span class='label label-" + branchData.classColor + "'>" + branchData.classColor.toUpperCase() + "</span>" + // status
+            "<span class='glyphicon glyphicon-cog'></span>" + // setting
+            "<span>" + oBranch.name + branchData.parentBranchName + "</span>" + // branch name
+            "<span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'></span>" + // badge miss commit
+            "<span class='text-muted pull-right' style='font-size:11px'>" + oBranch.lastCommit + "</span>" + //last commit author
         "</div>"
     );
 
-    // if the branch are on a rebase status NEED_REBASE, we have a "rebase" button to activate
-    if (oBranch.status === STATUS.NEED_REBASE) {
-        $("." + branchData.branchClassName + " .glyphicon").tooltip();
-        $("." + branchData.branchClassName + " .glyphicon").click(clickOnButton);
-    }
+    // setting button
+    var setting = $("." + branchData.branchClassName + " span").get(1);
+    $(setting).click(showBranchActions.bind(this, oProject, oBranch));
+
+    // tooltip and click on badge "miss commit"
+    var missCommit = $("." + branchData.branchClassName + " span").get(2);
+    $(missCommit).tooltip();
+    $(missCommit).click(showDiff.bind(this, oProject.url, oBranch.name, oBranch.parent));
 }
 
-var updateBranch = function(oProject, oBranch, branchData) {
+var updateBranch = function(oBranch, branchData) {
     var branch = $("." + branchData.branchClassName).get(0);
     if (branch) {
-        var label = $("." + branchData.branchClassName + " span").get(0);
-        var branchName = $("." + branchData.branchClassName + " span").get(1);
-        var missCommit = $("." + branchData.branchClassName + " span").get(2);
-        var lastCommit = $("." + branchData.branchClassName + " span").get(3);
-        var rebaseButton = $(branch).children(".rebase").get(0);
-        var recoverButton = $(branch).children(".recover").get(0);
+        var branchElement = $("." + branchData.branchClassName + " span");
+        var label = branchElement.get(0);
+        var setting = branchElement.get(1);
+        var branchName = branchElement.get(2);
+        var missCommit = branchElement.get(3);
+        var lastCommit = branchElement.get(4);
 
         label.className = "label label-" + branchData.classColor;
         label.innerHTML = branchData.classColor.toUpperCase();
@@ -125,74 +129,62 @@ var updateBranch = function(oProject, oBranch, branchData) {
             }
         }
 
-        //tolltip on badge
-        if (missCommit.innerHTML === "") {
-            $(missCommit).tooltip();
-            $(missCommit).click(showDiff.bind(this, oProject.url, oBranch.name, oBranch.parent));
-        }
         // if we have missings commits information on oBranch, fill badge
         if (oBranch.missCommit) {
             missCommit.innerHTML = oBranch.missCommit;
         } else {
             missCommit.innerHTML = "";
         }
-
-        // if we have not a rebase button, and the branch need for it, put a rebase button. If a rebase was called from somewhere else, don't create the button
-        if (!rebaseButton && oBranch.status === STATUS.NEED_REBASE && !oBranch.rebase) {
-            $(branch).append("<span class='glyphicon glyphicon-refresh rebase' data-toggle='tooltip' data-placement='right' title='rebase the branch'></span>");
-            $(branch).children(".rebase").tooltip();
-            $(branch).children(".rebase").click(clickOnButton);
-        // else, if we have a rebase button, and don't currently need it, remove it
-        } else if (rebaseButton && oBranch.status !== STATUS.NEED_REBASE) {
-            $(rebaseButton).tooltip("destroy");
-            $(rebaseButton).remove();
-        }
-
-        // if we have not a recover button, and the branch need for it, put a recover button.
-        var backupTitle = "backup create on " + oBranch.backup;
-        if (!recoverButton && oBranch.backup !== "") {
-            $(branch).append("<span class='glyphicon glyphicon-plus recover' data-toggle='tooltip' data-placement='right' title='" + backupTitle + "'></span>");
-            $(branch).children(".recover").tooltip();
-            $(branch).children(".recover").click(clickOnButton);
-        // else, update title if needed
-        } else if (recoverButton && oBranch.status === STATUS.ONGOING) {
-            $(recoverButton).tooltip("destroy");
-            $(recoverButton).remove();
-        } else if (recoverButton && $(recoverButton).attr("title") !== backupTitle) {
-            $(recoverButton).attr("title", backupTitle);
-        }
     }
 }
 
-// ask a rebase / recover on server for a target branch
-var clickOnButton = function() {
-    var targetProject = getProject(this);
-    var targetBranch = getBranch(this, targetProject);
-    var type = this.className.split(" ")[2];
-
+var showBranchActions = function(oProject, oBranch) {
+    // first call, add click on actions buttons
     if ($('.modalAsk .modal-title').html() === "") {
-        $('.modalAsk .btn-primary').click(ask);
+        $('.modalAsk .modal-body button').click(ask);
     }
 
-    $('.modalAsk .modal-title').html("Confirm " + type);
-    $('.modalAsk .modal-body').html(targetBranch);
+    $('.modalAsk .modal-title').html(oBranch.name);
+
+    // merge button
+    $('.modalAsk .merge').html('merge <i>' + oBranch.parent + '</i> on it');
+    if (!oBranch.merge.allow) {
+        $('.modalAsk .merge').attr("disabled", "disabled");
+    } else {
+        $('.modalAsk .merge').removeAttr("disabled");
+    }
+
+    // rebase button
+    $('.modalAsk .rebase').html('rebase from <i>' + oBranch.parent + '</i>');
+    if (!oBranch.rebase.allow) {
+        $('.modalAsk .rebase').attr("disabled", "disabled");
+    } else {
+        $('.modalAsk .rebase').removeAttr("disabled");
+    }
+
+    // recover button
+    if (oBranch.backup) {
+        $('.modalAsk .recover').removeAttr("disabled");
+        $('.modalAsk .recover').attr("title", "backup create on " + oBranch.backup);
+        $('.modalAsk .recover').tooltip();
+    } else {
+        $('.modalAsk .recover').attr("disabled", "disabled");
+    }
+
     $('.modalAsk').data({
-        branch: targetBranch,
-        project: targetProject,
-        branchClass: "." + this.parentNode.className.replace("branch ", ""),
-        type: type
+        oBranch: oBranch,
+        oProject: oProject
     });
 
     $('.modalAsk').modal('show');
 }
 
+// ask a rebase / recover on server for a target branch
 var ask = function() {
     var data = $('.modalAsk').data();
-    socket.emit(data.type, {on: data.branch, from: data.project});
-    if (data.type === "rebase") {
-        $(data.branchClass).children(".rebase").tooltip("destroy");
-        $(data.branchClass).children(".rebase").remove();
-    }
+    var type = this.className.split(" ")[0];
+    window.open("/ask/" + type + "/" + data.oBranch.name + "/" + data.oProject.name, "", "width=1000, height=700");
+    console.log("/ask/" + type + "/" + data.oBranch.name + "/" + data.oProject.name);
     $('.modalAsk').modal('hide');
 }
 
@@ -239,14 +231,6 @@ var chooseColor = function(status) {
         break;
     }
     return color;
-}
-
-var getProject = function(button) {
-    return button.parentNode.parentNode.parentNode.parentNode.id;
-}
-
-var getBranch = function(button, project) {
-    return button.parentNode.className.replace("branch ", "").replace(project + "_", "");
 }
 
 var fullscreen = function(bt) {
