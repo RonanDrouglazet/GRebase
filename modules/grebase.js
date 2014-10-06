@@ -57,20 +57,35 @@ var genConfig = function(json) {
 };
 
 var startWatching = function(repoIndex) {
-    cloneRepo(config.repository[repoIndex], function() {
-        updateBranchList(config.repository[repoIndex], function(branchList) {
-            updateBackup(config.repository[repoIndex], function() {
+    var repo = config.repository[repoIndex];
+    cloneRepo(repo, function() {
+        updateBranchList(repo, function(branchList) {
+            updateBackup(repo, function() {
                 updateInterface();
                 var aBranch = [];
                 branchList.forEach(function(branch, index) {
                     aBranch.push(index);
                 });
                 updateBranchStatus(repoIndex, aBranch, 0, function() {
-                    console.log("TOUT BON");
+                    gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.PUSH, onPushEvent);
+                    gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.CREATE, onCreateEvent);
+                    gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.DELETE, onDeleteEvent);
                 });
             });
         });
     });
+};
+
+var onPushEvent = function(pushEvent) {
+    console.log("onPushEvent");
+};
+
+var onCreateEvent = function() {
+    console.log("onCreateEvent");
+};
+
+var onDeleteEvent = function() {
+    console.log("onDeleteEvent");
 };
 
 var getToken = function(req, res) {
