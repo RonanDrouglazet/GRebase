@@ -119,7 +119,7 @@ var getToken = function(req, res) {
         fs.writeFileSync("config.json", JSON.stringify(jsonConfig));
         res.write("<script>window.close()</script>");
         res.send();
-        updateInterface();
+        startWatching(id);
     });
 };
 

@@ -2,7 +2,7 @@ var appId = require("../config.json").GitHub_API,
 https = require('https'),
 querystring = require('querystring'),
 eventHandlers = {},
-pollOngoing = false;
+pollOngoing = {};
 
 // GitApi event (https://developer.github.com/v3/activity/events/types/)
 exports.EVENTS = {
@@ -58,20 +58,24 @@ exports.getCommit = function(accessToken, owner, repo, sha, done) {
 }
 
 exports.addEventOnRepo = function(accessToken, owner, repo, eventName, handler) {
-    if (!eventHandlers[eventName]) {
-        eventHandlers[eventName] = [];
+    if (!eventHandlers[repo]) {
+        eventHandlers[repo] = {};
+    }
+    if (!eventHandlers[repo][eventName]) {
+        eventHandlers[repo][eventName] = [];
     }
 
-    eventHandlers[eventName].push(handler);
+    eventHandlers[repo][eventName].push(handler);
 
-    if (!pollOngoing) {
-        pollOngoing = true;
+    if (!pollOngoing[repo]) {
+        pollOngoing[repo] = true;
         loopPollForRepoEvent(accessToken, owner, repo);
     }
 }
 
 var loopPollForRepoEvent = function(accessToken, owner, repo) {
-    var etag = lastEventId = null;
+    var etag = null;
+    var lastEventId = null;
 
     var pollRequest = function() {
         exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/events", null, etag, function(error, events, response) {
@@ -83,8 +87,8 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
                 var newEventId = events[0].id;
                 if (etag) {
                     while (events[0].id !== lastEventId) {
-                        if (eventHandlers[events[0].type]) {
-                            eventHandlers[events[0].type].forEach(function(callback, index) {
+                        if (eventHandlers[repo][events[0].type]) {
+                            eventHandlers[repo][events[0].type].forEach(function(callback, index) {
                                 callback(events[0]);
                             });
                         }
