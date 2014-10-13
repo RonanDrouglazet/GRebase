@@ -211,13 +211,23 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
         var next = updateBranchStatus.bind(this, repoIndex, aBranchIndex, current + 1, done);
         var repo = config.repository[repoIndex];
         var branch = repo.branch[aBranchIndex[current]];
-        var rebaseOrigin = getRebaseOrigin(repo, branch.name); // get the rebase origin from config rules for this branch
+        var rebaseRule = getRebaseRule(repo, branch.name); // get the rebase origin from config rules for this branch
+        var rebaseOrigin = rebaseRule ? rebaseRule.from : null;
 
         branch.status = STATUS.ONGOING;
         updateInterface();
 
-        if (rebaseOrigin) {
+        if (rebaseRule) {
             branch.parent = rebaseOrigin;
+
+            if (rebaseRule.automatic.merge && !branch.merge.token) {
+                branch.merge.token = repo.token;
+            }
+
+            if (rebaseRule.automatic.rebase && !branch.rebase.token) {
+                branch.rebase.token = repo.token;
+            }
+
             // checkout on branch
             gitCli.checkout(repo.name, branch.name, function() {
                 // if a recover asked on this branch, reset it from backup and push on origin
@@ -242,12 +252,15 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
 
                                     gitCli.merge(repo.name, rebaseOrigin, function(error, upToDate) {
                                         if (error) {
+                                            gitApi.createIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name, "conflict detected with " + branch.parent);
                                             branch.status = STATUS.REBASE_FAILED;
                                             branch.merge.allow = branch.rebase.allow = false;
                                             gitCli.reset(repo.name, branch.name, function() {
                                                 next();
                                             });
                                         } else {
+                                            gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
+
                                             if (upToDate) {
                                                 branch.status = STATUS.UP_TO_DATE;
                                                 branch.merge.allow = branch.rebase.allow = false;
@@ -353,15 +366,15 @@ var writeBackup = function(backup, done) {
 };
 
 // get rebase origin for a branch from rules defined on config.json
-var getRebaseOrigin = function(repo, branchName) {
-    var rebaseOrigin = null;
+var getRebaseRule = function(repo, branchName) {
+    var rebaseRule = null;
     repo.rebase.forEach(function(rules, index) {
         var re = new RegExp(rules.to, "ig");
         if (re.test(branchName)) {
-            rebaseOrigin = rules.from;
+            rebaseRule = rules;
         }
     });
-    return rebaseOrigin;
+    return rebaseRule;
 };
 
 var getRelatedBranchIndex = function(repo, branchName) {

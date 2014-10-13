@@ -57,6 +57,38 @@ exports.getCommit = function(accessToken, owner, repo, sha, done) {
     exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/commits/" + sha, null, null, done);
 }
 
+exports.createIssueOnRepo = function(accessToken, owner, repo, title, body) {
+    exports.doesIssueExist(accessToken, owner, repo, title, function(error, issue) {
+        if (!error && !issue) {
+            exports.gitHubApiRequest(accessToken, "POST", "/repos/" + owner + "/" + repo + "/issues", {title: title, body: body}, null, function() {});
+        }
+    });
+}
+
+exports.closeIssueOnRepo = function(accessToken, owner, repo, title) {
+    exports.doesIssueExist(accessToken, owner, repo, title, function(error, issue) {
+        if (!error && issue) {
+            exports.gitHubApiRequest(accessToken, "PATCH", "/repos/" + owner + "/" + repo + "/issues/" + issue.number, {state: "closed"}, null, function() {});
+        }
+    });
+}
+
+exports.doesIssueExist = function(accessToken, owner, repo, title, done) {
+    var issueFound = null;
+    exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/issues", null, null, function(error, data, res) {
+        if (!error && data && data.length) {
+            data.forEach(function(issue, index) {
+                if (issue.title === title) {
+                    issueFound = issue;
+                }
+            });
+            done(error, issueFound);
+        } else {
+            done(error, null);
+        }
+    });
+}
+
 exports.addEventOnRepo = function(accessToken, owner, repo, eventName, handler) {
     if (!eventHandlers[repo]) {
         eventHandlers[repo] = {};
@@ -115,7 +147,7 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
  */
 exports.gitHubApiRequest = function(accessToken, method, path, params, headers, done) {
     var dataObject = "", options = {
-      headers: {"User-Agent": "BackNode", "Authorization": "token " + accessToken},
+      headers: {"User-Agent": "BackNode", "Authorization": "token " + accessToken, "Content-Length": params ? JSON.stringify(params).length : 0},
       hostname: 'api.github.com',
       port: 443,
       path: path,
@@ -136,7 +168,14 @@ exports.gitHubApiRequest = function(accessToken, method, path, params, headers, 
         });
 
         res.on('end', function() {
-            dataObject = dataObject !== "" ? JSON.parse(dataObject) : null;
+            try {
+                dataObject = dataObject !== "" ? JSON.parse(dataObject) : null;
+            } catch(e) {
+                console.log(method, path, params);
+                console.log(dataObject);
+                console.log(e);
+            }
+
             done(null, dataObject, res);
         });
     });
