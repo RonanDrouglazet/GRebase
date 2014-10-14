@@ -284,17 +284,19 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
                                                         gitCli.rebase(repo.name, rebaseOrigin, function(error, upToDate) {
                                                             branch.rebase.allow = !error;
 
-                                                            if (!error && branch.rebase.token) {
-                                                                rebaseAndPush(repo, branch.name, rebaseOrigin, branch.rebase.token, function() {
-                                                                    branch.status = STATUS.UP_TO_DATE;
-                                                                    branch.backup = config.backup[repo.url][branch.name] = new Date().toLocaleString();
-                                                                    writeBackup(config.backup);
-                                                                    branch.rebase.token = null;
+                                                            gitCli.abortRebase(repo.name, function() {
+                                                                if (!error && branch.rebase.token) {
+                                                                    rebaseAndPush(repo, branch.name, rebaseOrigin, branch.rebase.token, function() {
+                                                                        branch.status = STATUS.UP_TO_DATE;
+                                                                        branch.backup = config.backup[repo.url][branch.name] = new Date().toLocaleString();
+                                                                        writeBackup(config.backup);
+                                                                        branch.rebase.token = null;
+                                                                        next();
+                                                                    });
+                                                                } else {
                                                                     next();
-                                                                });
-                                                            } else {
-                                                                next();
-                                                            }
+                                                                }
+                                                            });
                                                         });
                                                     });
                                                 }
