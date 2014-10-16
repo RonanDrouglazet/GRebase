@@ -239,71 +239,22 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
                         updateBranchStatus(repoIndex, aBranchIndex, current, done);
                     });
                 } else {
-                    gitCli.reset(repo.name, branch.name, function() {
-                        gitCli.pull(repo.name, function() {
-                            gitApi.getCommit(repo.token, repo.owner, repo.name, branch.sha, function(error, data) {
-                                if (data.commit) {
-                                    branch.lastCommit = data.commit.author.name;
+                    refreshBranch(repo, branch, function() {
+                        tryRebase(repo, branch, function(rError, rUpToDate) {
+                            tryMerge(repo, branch, function(mError, mUpToDate) {
+
+                                if (rError && mError) {
+                                    branch.status = STATUS.REBASE_FAILED;
+                                    gitApi.createIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name, "conflict detected with " + branch.parent);
+                                } else if (!mUpToDate && !rUpToDate) {
+                                    branch.status = STATUS.NEED_REBASE;
+                                    gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
+                                } else {
+                                    branch.status = STATUS.UP_TO_DATE;
+                                    gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
                                 }
 
-                                // get number of missing commits
-                                gitCli.getMissingCommits(repo.name, branch.name, rebaseOrigin, function(missingCommits) {
-                                    branch.missCommit = missingCommits;
-
-                                    gitCli.merge(repo.name, rebaseOrigin, function(error, upToDate) {
-                                        if (error) {
-                                            gitApi.createIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name, "conflict detected with " + branch.parent);
-                                            branch.status = STATUS.REBASE_FAILED;
-                                            branch.merge.allow = branch.rebase.allow = false;
-                                            gitCli.reset(repo.name, branch.name, function() {
-                                                next();
-                                            });
-                                        } else {
-                                            gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
-
-                                            if (upToDate) {
-                                                branch.status = STATUS.UP_TO_DATE;
-                                                branch.merge.allow = branch.rebase.allow = false;
-                                                next();
-                                            } else {
-                                                branch.status = STATUS.NEED_REBASE;
-                                                branch.merge.allow = true;
-
-                                                // if we want a merge, so do it and push
-                                                if (branch.merge.token) {
-                                                    mergeAndPush(repo, branch.name, rebaseOrigin, branch.merge.token, function() {
-                                                        branch.status = STATUS.UP_TO_DATE;
-                                                        branch.backup = config.backup[repo.url][branch.name] = new Date().toLocaleString();
-                                                        writeBackup(config.backup);
-                                                        branch.merge.token = null;
-                                                        next();
-                                                    });
-                                                } else {
-                                                    // else try to rebase to know if allow or not
-                                                    gitCli.reset(repo.name, branch.name, function() {
-                                                        gitCli.rebase(repo.name, rebaseOrigin, function(error, upToDate) {
-                                                            branch.rebase.allow = !error;
-
-                                                            gitCli.abortRebase(repo.name, function() {
-                                                                if (!error && branch.rebase.token) {
-                                                                    rebaseAndPush(repo, branch.name, rebaseOrigin, branch.rebase.token, function() {
-                                                                        branch.status = STATUS.UP_TO_DATE;
-                                                                        branch.backup = config.backup[repo.url][branch.name] = new Date().toLocaleString();
-                                                                        writeBackup(config.backup);
-                                                                        branch.rebase.token = null;
-                                                                        next();
-                                                                    });
-                                                                } else {
-                                                                    next();
-                                                                }
-                                                            });
-                                                        });
-                                                    });
-                                                }
-                                            }
-                                        }
-                                    });
-                                });
+                                next();
                             });
                         });
                     });
@@ -316,6 +267,81 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
     } else {
         done();
     }
+};
+
+var refreshBranch = function(repo, branch, done) {
+    gitCli.reset(repo.name, branch.name, function() {
+        gitCli.pull(repo.name, function() {
+            gitApi.getCommit(repo.token, repo.owner, repo.name, branch.sha, function(error, data) {
+                if (data.commit) {
+                    branch.lastCommit = data.commit.author.name;
+                }
+
+                // get number of missing commits
+                gitCli.getMissingCommits(repo.name, branch.name, branch.parent, function(missingCommits) {
+                    branch.missCommit = missingCommits;
+                    done();
+                });
+            });
+        });
+    });
+}
+
+var tryRebase = function(repo, branch, done) {
+    gitCli.rebase(repo.name, branch.parent, function(error, upToDate) {
+        branch.rebase.allow = (!error && !upToDate);
+
+        if (branch.rebase.allow && branch.rebase.token) {
+            rebaseAndPush(repo, branch.name, branch.parent, branch.rebase.token, function() {
+                branch.backup = config.backup[repo.url][branch.name] = new Date().toLocaleString();
+                writeBackup(config.backup);
+                branch.missCommit = 0;
+                branch.rebase.allow = false;
+                done(error, true);
+            });
+        } else if (upToDate) {
+            branch.missCommit = 0;
+            done(error, upToDate);
+        } else {
+            if (!error) {
+                gitCli.reset(repo.name, branch.name, function() {
+                    done(error, upToDate);
+                });
+            } else {
+                gitCli.abortRebase(repo.name, function() {
+                    done(error, upToDate);
+                });
+            }
+
+        }
+
+        branch.rebase.token = null;
+    });
+};
+
+var tryMerge = function(repo, branch, done) {
+    gitCli.merge(repo.name, branch.parent, function(error, upToDate) {
+        branch.merge.allow = (!error && !upToDate);
+
+        if (branch.merge.allow && branch.merge.token) {
+            mergeAndPush(repo, branch.name, branch.parent, branch.merge.token, function() {
+                branch.backup = config.backup[repo.url][branch.name] = new Date().toLocaleString();
+                writeBackup(config.backup);
+                branch.missCommit = 0;
+                branch.merge.allow = false;
+                done(error, true);
+            });
+        } else if (upToDate) {
+            branch.missCommit = 0;
+            done(error, upToDate);
+        } else {
+            gitCli.reset(repo.name, branch.name, function() {
+                done(error, upToDate);
+            });
+        }
+
+        branch.merge.token = null;
+    });
 };
 
 var updateBackup = function(repo, done) {

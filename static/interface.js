@@ -21,7 +21,7 @@ var updateUI = function(data) {
                     createBranch(oProject, oBranch, branchData);
                 } else if (nProject) {
                     // else update branch node with current infos
-                    updateBranch(oBranch, branchData);
+                    updateBranch(oProject, oBranch, branchData);
                 }
             });
         }
@@ -52,7 +52,7 @@ var removeConnectButton = function(nProject) {
 }
 
 var getBranchData = function(project, branch) {
-    var branchClassName = project.name + "_" + branch.name.replace(".", "");
+    var branchClassName = project.name + "_" + branch.name.replace(/\./ig, "");
     branch.lastCommit = branch.lastCommit.replace("<", "(").replace(">", ")");
 
     return {
@@ -82,22 +82,26 @@ var createBranch = function(oProject, oBranch, branchData) {
             "<span class='label label-" + branchData.classColor + "'>" + branchData.classColor.toUpperCase() + "</span>" + // status
             "<span class='glyphicon glyphicon-cog'></span>" + // setting
             "<span>" + oBranch.name + branchData.parentBranchName + "</span>" + // branch name
-            "<span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'></span>" + // badge miss commit
+            "<span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'>" + (oBranch.missCommit || "") + "</span>" + // badge miss commit
             "<span class='text-muted pull-right' style='font-size:11px'>" + oBranch.lastCommit + "</span>" + //last commit author
         "</div>"
     );
 
     // setting button
     var setting = $("." + branchData.branchClassName + " span").get(1);
-    $(setting).click(showBranchActions.bind(this, oProject, oBranch));
+    $(setting).click(showBranchActions);
+    $(setting).data({
+        oBranch: oBranch,
+        oProject: oProject
+    });
 
     // tooltip and click on badge "miss commit"
-    var missCommit = $("." + branchData.branchClassName + " span").get(2);
+    var missCommit = $("." + branchData.branchClassName + " span").get(3);
     $(missCommit).tooltip();
     $(missCommit).click(showDiff.bind(this, oProject.url, oBranch.name, oBranch.parent));
 }
 
-var updateBranch = function(oBranch, branchData) {
+var updateBranch = function(oProject, oBranch, branchData) {
     var branch = $("." + branchData.branchClassName).get(0);
     if (branch) {
         var branchElement = $("." + branchData.branchClassName + " span");
@@ -106,6 +110,7 @@ var updateBranch = function(oBranch, branchData) {
         var branchName = branchElement.get(2);
         var missCommit = branchElement.get(3);
         var lastCommit = branchElement.get(4);
+        var ongoing = $("." + branch.className.split(" ")[1] + "_ongoing");
 
         label.className = "label label-" + branchData.classColor;
         label.innerHTML = branchData.classColor.toUpperCase();
@@ -119,14 +124,19 @@ var updateBranch = function(oBranch, branchData) {
 
         // if the branch node are not on the right classColor container or on the right project (cf project "ongoing") move it
         if (branch.parentNode.className !== branchData.classColor || branch.parentNode.parentNode.parentNode.id !== branchData.container) {
-            if (branchData.container === "ongoing") {
-                $("#" + branchData.container + " ." + branchData.classColor).html("");
+            if (branchData.container === "ongoing" && ongoing.length === 0) {
                 var copy = branch.cloneNode(true);
                 copy.className += "_ongoing";
                 $("#" + branchData.container + " ." + branchData.classColor).append(copy);
-            } else {
+            } else if (branchData.container !== "ongoing" && ongoing.length > 0) {
+                ongoing.remove();
+            }
+
+            if (branchData.container !== "ongoing") {
                 $("#" + branchData.container + " ." + branchData.classColor).append(branch);
             }
+        } else {
+            ongoing.remove();
         }
 
         // if we have missings commits information on oBranch, fill badge
@@ -135,41 +145,37 @@ var updateBranch = function(oBranch, branchData) {
         } else {
             missCommit.innerHTML = "";
         }
+
+        $(setting).data({
+            oBranch: oBranch,
+            oProject: oProject
+        });
     }
 }
 
-var showBranchActions = function(oProject, oBranch) {
+var showBranchActions = function() {
     // first call, add click on actions buttons
     if ($('.modalAsk .modal-title').html() === "") {
         $('.modalAsk .modal-body button').click(ask);
     }
 
+    var oProject = $(this).data().oProject;
+    var oBranch = $(this).data().oBranch;
+
     $('.modalAsk .modal-title').html(oBranch.name);
 
     // merge button
     $('.modalAsk .merge').html('merge <i>' + oBranch.parent + '</i> on it');
-    if (!oBranch.merge.allow) {
-        $('.modalAsk .merge').attr("disabled", "disabled");
-    } else {
-        $('.modalAsk .merge').removeAttr("disabled");
-    }
+    $('.modalAsk .merge').css("display", oBranch.merge.allow ? "block" : "none");
 
     // rebase button
     $('.modalAsk .rebase').html('rebase from <i>' + oBranch.parent + '</i>');
-    if (!oBranch.rebase.allow) {
-        $('.modalAsk .rebase').attr("disabled", "disabled");
-    } else {
-        $('.modalAsk .rebase').removeAttr("disabled");
-    }
+    $('.modalAsk .rebase').css("display", oBranch.rebase.allow ? "block" : "none");
 
     // recover button
-    if (oBranch.backup) {
-        $('.modalAsk .recover').removeAttr("disabled");
-        $('.modalAsk .recover').attr("title", "backup create on " + oBranch.backup);
-        $('.modalAsk .recover').tooltip();
-    } else {
-        $('.modalAsk .recover').attr("disabled", "disabled");
-    }
+    $('.modalAsk .recover').css("display", oBranch.backup ? "block" : "none");
+    $('.modalAsk .recover').attr("title", "backup create on " + oBranch.backup);
+    $('.modalAsk .recover').tooltip();
 
     $('.modalAsk').data({
         oBranch: oBranch,
@@ -199,7 +205,7 @@ var cleanBranchIfNoRemote = function(project) {
         var isExist = false;
         var nBranchName = nBranch.className.replace("branch ", "").replace(project.name + "_", "");
         project.branch.forEach(function(oBranch) {
-            if (oBranch.name.replace(".", "") === nBranchName) {
+            if (oBranch.name.replace(/\./ig, "") === nBranchName) {
                 isExist = true;
             }
         });
@@ -279,7 +285,7 @@ var fullscreen = function(bt) {
 
 //filter branch with input
 $(".form-control").on("input", function() {
-    var r = new RegExp(this.value.replace(".", ""), "ig");
+    var r = new RegExp(this.value.replace(/\./ig, ""), "ig");
     $('.branch').each(function() {
         if (!r.test(this.className) && !$(this.parentNode.parentNode).hasClass("infos")) {
             $(this).hide();

@@ -111,30 +111,32 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
 
     var pollRequest = function() {
         exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/events", null, etag, function(error, events, response) {
-            var h = response.headers;
-            var time =  parseInt(h["x-poll-interval"], 10);
-            var ntag = h.etag;
+            if (!error) {
+                var h = response.headers;
+                var time =  parseInt(h["x-poll-interval"], 10);
+                var ntag = h.etag;
 
-            if (h.status === "200 OK") {
-                var newEventId = events[0].id;
-                if (etag) {
-                    while (events[0].id !== lastEventId) {
-                        if (eventHandlers[repo][events[0].type]) {
-                            eventHandlers[repo][events[0].type].forEach(function(callback, index) {
-                                callback(events[0]);
-                            });
+                if (h.status === "200 OK") {
+                    var newEventId = events[0].id;
+                    if (etag) {
+                        while (events[0].id !== lastEventId) {
+                            if (eventHandlers[repo][events[0].type]) {
+                                eventHandlers[repo][events[0].type].forEach(function(callback, index) {
+                                    callback(events[0]);
+                                });
+                            }
+                            events.shift()
                         }
-                        events.shift()
                     }
+                    lastEventId = newEventId;
                 }
-                lastEventId = newEventId;
-            }
 
-            if (ntag) {
-                etag = {"If-None-Match": ntag};
-            }
+                if (ntag) {
+                    etag = {"If-None-Match": ntag};
+                }
 
-            setTimeout(pollRequest, time * 1000);
+                setTimeout(pollRequest, time * 1000);
+            }
         });
     }
 
