@@ -41,7 +41,8 @@ var updateUI = function(data) {
 
 var addConnectButton = function(project, id) {
     if ($(project).children(".btn-success").length === 0) {
-        $(project).append("<button type='button' class='btn btn-success'>Connect you to start the process</button>").click(function() {
+        $(project).append("<button type='button' class='btn btn-success'>Connect you to start the process</button>");
+        $(project).children("button").click(function() {
             window.open("/getToken/" + id, "", "width=1000, height=700");
         });
     }

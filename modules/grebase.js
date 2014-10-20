@@ -162,7 +162,7 @@ var updateBranchList = function(repo, done) {
 
             done(repo.branch);
         } else {
-            console.log(error);
+            console.log("updateBranchList error", error);
             done(repo.branch);
         }
     });
@@ -367,7 +367,7 @@ var readBackup = function(done) {
     } else {
         fs.readFile(backupFile, function(err, data) {
             if (!err) {
-                config.backup = JSON.parse(data);
+                config.backup = JSON.parse(data.toString());
                 done(config.backup);
             } else {
                 fs.appendFile(backupFile, {}, function(err) {
@@ -375,7 +375,7 @@ var readBackup = function(done) {
                         config.backup = {};
                         done(config.backup);
                     } else {
-                        console.log(err);
+                        console.log("readBackup error", err);
                     }
                 });
             }
@@ -388,7 +388,7 @@ var writeBackup = function(backup, done) {
         if (!err && done) {
             done();
         } else {
-            console.log(err);
+            console.log("writeBackup error", err);
         }
     });
 };

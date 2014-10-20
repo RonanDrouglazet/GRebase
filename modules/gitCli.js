@@ -12,7 +12,7 @@ exports.clone = function(url, done) {
 };
 
 exports.checkout = function(repoName, branchName, done) {
-    exports.exec("../repos/" + repoName, "git checkout " + branchName, function(err, stdout, stderr) {
+    exports.exec("../repos/" + repoName, "git fetch origin && git checkout " + branchName, function(err, stdout, stderr) {
         if (!err) {
             done();
         } else {
