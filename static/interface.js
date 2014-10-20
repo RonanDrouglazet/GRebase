@@ -87,18 +87,21 @@ var createBranch = function(oProject, oBranch, branchData) {
         "</div>"
     );
 
-    // setting button
-    var setting = $("." + branchData.branchClassName + " span").get(1);
-    $(setting).click(showBranchActions);
-    $(setting).data({
+    var buttonData = {
         oBranch: oBranch,
         oProject: oProject
-    });
+    };
+
+    // setting button
+    var setting = $("." + branchData.branchClassName + " span").get(1);
+    $(setting).data(buttonData);
+    $(setting).click(showBranchActions);
 
     // tooltip and click on badge "miss commit"
     var missCommit = $("." + branchData.branchClassName + " span").get(3);
     $(missCommit).tooltip();
-    $(missCommit).click(showDiff.bind(this, oProject.url, oBranch.name, oBranch.parent));
+    $(missCommit).data(buttonData);
+    $(missCommit).click(showDiff);
 }
 
 var updateBranch = function(oProject, oBranch, branchData) {
@@ -146,10 +149,13 @@ var updateBranch = function(oProject, oBranch, branchData) {
             missCommit.innerHTML = "";
         }
 
-        $(setting).data({
+        var buttonData = {
             oBranch: oBranch,
             oProject: oProject
-        });
+        };
+
+        $(setting).data(buttonData);
+        $(missCommit).data(buttonData);
     }
 }
 
@@ -194,8 +200,9 @@ var ask = function() {
     $('.modalAsk').modal('hide');
 }
 
-var showDiff = function(project, branch, parent) {
-    var compareUrl = project.replace(".git", "") + "/compare/" + branch + "..." + parent;
+var showDiff = function() {
+    var data = $(this).data();
+    var compareUrl = data.oProject.url.replace(".git", "") + "/compare/" + data.oBranch.name + "..." + data.oBranch.parent;
     window.open(compareUrl, "", "width=1000, height=700");
 }
 
