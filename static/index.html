@@ -36,6 +36,20 @@
         </div>
       </div>
     </div>
+    <div class="modal modalHistory fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="modal" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            <h4 class="modal-title">History (--> Blame haha !)</h4>
+          </div>
+          <div class="modal-body">
+            <ul class="list-group">
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
       <div class="container-fluid">
         <div class="navbar-header">
@@ -49,6 +63,7 @@
         </div>
         <div class="navbar-collapse collapse">
           <form class="navbar-form navbar-right">
+            <a href="#" data-toggle="modal" data-target=".modalHistory">history</a>&nbsp;&nbsp;
             <a href="#" onclick="javascript:fullscreen(this)" id="fullscreenBT">start fullscreen</a>&nbsp;&nbsp;
             <input type="text" class="form-control" placeholder="Search...">
           </form>

@@ -57,6 +57,10 @@ exports.getCommit = function(accessToken, owner, repo, sha, done) {
     exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/commits/" + sha, null, null, done);
 }
 
+exports.getUser = function(userToken, done) {
+    exports.gitHubApiRequest(userToken, "GET", "/user", null, null, done);
+}
+
 exports.createIssueOnRepo = function(accessToken, owner, repo, title, body) {
     exports.doesIssueExist(accessToken, owner, repo, title, function(error, issue) {
         if (!error && !issue) {

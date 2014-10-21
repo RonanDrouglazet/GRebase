@@ -5,7 +5,7 @@ gitApi = require("./gitApi.js"),
 gitCli = require("./gitCli.js"),
 fs = require("fs");
 
-var config, sIo;
+var config, sIo, history;
 var STATUS = {
     UNCHECKED: 1,
     UP_TO_DATE: 2,
@@ -30,7 +30,8 @@ exports.middleware = function(app, socketIo, express) {
     // socket io event for web interface
     sIo = socketIo;
     sIo.on("connection", function(socket) {
-        socket.emit("update", config);
+        updateInterface();
+        updateHistory();
     });
 
     genConfigAndStartWatching(jsonConfig);
@@ -132,13 +133,17 @@ var cloneRepo = function(repo, done) {
                 var url = repo.url.replace(/https:\/\/.*github/g, "https://" + repo.token + "@github");
                 gitCli.clone(url, function() {
                     console.log("git clone finish on", url);
-                    done();
+                    gitCli.setGrebaseAuthor(repo.name, function() {
+                        done();
+                    });
                 });
             } else {
                 console.log(repo.name + " already exist, skip to the next repo");
                 // abort an ongoing rebase when server was killed
                 gitCli.abortRebase(repo.name, function() {
-                    done();
+                    gitCli.setGrebaseAuthor(repo.name, function() {
+                        done();
+                    });
                 });
             }
         });
@@ -232,11 +237,14 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
             gitCli.checkout(repo.name, branch.name, function() {
                 // if a recover asked on this branch, reset it from backup and push on origin
                 if (branch.recover.token) {
-                    gitCli.recover(repo, branch.name, branch.recover.token, function() {
-                        branch.status = STATUS.UNCHECKED;
-                        branch.recover.token = null;
-                        // re check the current branch after the recover
-                        updateBranchStatus(repoIndex, aBranchIndex, current, done);
+                    gitApi.getUser(branch.recover.token, function(error, user) {
+                        gitCli.recover(repo, branch.name, branch.recover.token, function() {
+                            branch.status = STATUS.UNCHECKED;
+                            branch.recover.token = null;
+                            // re check the current branch after the recover
+                            updateBranchStatus(repoIndex, aBranchIndex, current, done);
+                        });
+                        addToHistory(user, "recover " + branch.name);
                     });
                 } else {
                     refreshBranch(repo, branch, function() {
@@ -427,10 +435,18 @@ var rebaseAndPush = function(repo, branchName, rebaseOrigin, tokenToPush, done) 
     gitCli.reset(repo.name, branchName, function() {
         gitCli.branch(repo.name, branchName + "_backup", function() {
             gitCli.checkout(repo.name, branchName, function() {
-                gitCli.rebase(repo.name, rebaseOrigin, function(error, upToDate) {
-                    if (!error) {
-                        gitCli.push(tokenToPush, repo.name, repo.url, branchName, done);
-                    }
+                gitApi.getUser(tokenToPush, function(error, user) {
+                    gitCli.rebase(repo.name, rebaseOrigin, function(error, upToDate) {
+                        if (!error) {
+                            gitCli.push(tokenToPush, repo.name, repo.url, branchName, function(err) {
+                                if (err) {
+                                    addToHistory(user, "push error for " + rebaseOrigin + " on " + branchName);
+                                }
+                                done();
+                            }, true);
+                        }
+                    });
+                    addToHistory(user, "rebase " + branchName + " from " + rebaseOrigin);
                 });
             });
         });
@@ -442,10 +458,18 @@ var mergeAndPush = function(repo, branchName, rebaseOrigin, tokenToPush, done) {
     gitCli.reset(repo.name, branchName, function() {
         gitCli.branch(repo.name, branchName + "_backup", function() {
             gitCli.checkout(repo.name, branchName, function() {
-                gitCli.merge(repo.name, rebaseOrigin, function(error, upToDate) {
-                    if (!error) {
-                        gitCli.push(tokenToPush, repo.name, repo.url, branchName, done);
-                    }
+                gitApi.getUser(tokenToPush, function(error, user) {
+                    gitCli.merge(repo.name, rebaseOrigin, function(error, upToDate) {
+                        if (!error) {
+                            gitCli.push(tokenToPush, repo.name, repo.url, branchName, function(err) {
+                                if (err) {
+                                    addToHistory(user, "push error for " + rebaseOrigin + " on " + branchName);
+                                }
+                                done();
+                            });
+                        }
+                    }, user.login + " merge branch 'origin/" + rebaseOrigin + "' into " + branchName);
+                    addToHistory(user, "merge " + rebaseOrigin + " on " + branchName);
                 });
             });
         });
@@ -479,4 +503,18 @@ var getIndexFromName = function(cArray, name) {
 
 var updateInterface = function() {
     sIo.sockets.emit("update", config);
+};
+
+var updateHistory = function() {
+    sIo.sockets.emit("history", history);
+}
+
+var addToHistory = function(user, message) {
+    if (!history) {
+        history = [];
+    }
+    var date = new Date();
+    var dateToMessage = date.getHours() + ":" + date.getMinutes() + " - " + date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
+    history.push({id: history.length, user: user, message: message, on: dateToMessage});
+    updateHistory();
 };

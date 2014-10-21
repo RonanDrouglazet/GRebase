@@ -291,6 +291,22 @@ var fullscreen = function(bt) {
     }, 1000);
 }
 
+var addActionOnHistory = function(data) {
+    if (data) {
+        data.forEach(function(action, index) {
+            if (!$(".modalHistory .list-group .d" + action.id).length) {
+                $(".modalHistory .list-group").prepend(
+                    "<li class='list-group-item d" + action.id + "'>" +
+                    "<span class='badge'>" + action.on + "</span>" +
+                    "<img width='22' height='22' src='" + action.user.avatar_url + "' class='img-rounded' />   " +
+                    "<i>" + action.user.login + "</i> <b>" + action.message + "</b></li>");
+            }
+        });
+    } else {
+        $(".modalHistory .list-group").html("");
+    }
+}
+
 //filter branch with input
 $(".form-control").on("input", function() {
     var r = new RegExp(this.value.replace(/\./ig, ""), "ig");
@@ -307,6 +323,9 @@ $(".form-control").on("input", function() {
 var socket = io(window.location.origin);
 socket.on("update", function(data) {
     updateUI(data);
+});
+socket.on("history", function(data) {
+    addActionOnHistory(data);
 });
 
 // if interface called with ?fullscreen on url GET param, auto active fullscreen

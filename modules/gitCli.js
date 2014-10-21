@@ -67,8 +67,8 @@ exports.rebase = function(repoName, rebaseOrigin, done) {
     });
 };
 
-exports.merge = function(repoName, branchToMerge, done) {
-    exports.exec("../repos/" + repoName, "git merge --no-ff origin/" + branchToMerge, function(err, stdout, stderr) {
+exports.merge = function(repoName, branchToMerge, done, msg) {
+    exports.exec("../repos/" + repoName, "git merge --no-ff origin/" + branchToMerge + (msg ? (" -m '" + msg + "'") : ""), function(err, stdout, stderr) {
         if (stdout === "Already up-to-date.\n") {
             done(err, true);
         } else {
@@ -88,15 +88,14 @@ exports.branch = function(repoName, branchName, done) {
     });
 };
 
-exports.push = function(pushToken, repoName, repoUrl, branchName, done) {
+exports.push = function(pushToken, repoName, repoUrl, branchName, done, force) {
     repoUrl = repoUrl.replace("https://", "https://" + pushToken + "@");
-    exports.exec("../repos/" + repoName, "git push -f " + repoUrl + " " + branchName, function(err, stdout, stderr) {
-        if (!err) {
-            done();
-        } else {
+    exports.exec("../repos/" + repoName, "git push " + (force ? "-f " : "") + repoUrl + " " + branchName, function(err, stdout, stderr) {
+        if (err) {
             console.log("push error on", branchName, "(", repoName, ") ", "with token: ", pushToken);
             console.log(err);
         }
+        done(err);
     });
 };
 
@@ -115,6 +114,12 @@ exports.getMissingCommits = function(repoName, branchName, rebaseOrigin, done) {
             console.log("getMissingCommits error on", branchName, "(", repoName, ")");
             console.log(err);
         }
+    });
+};
+
+exports.setGrebaseAuthor = function(repoName, done) {
+    exports.exec("../repos/" + repoName, "git config user.name 'GRebase-' && git config user.email 'grebase.2014@gmail.com'", function(err, stdout, stderr) {
+        done(err);
     });
 };
 
