@@ -12,10 +12,12 @@ exports.clone = function(url, done) {
     });
 };
 
-exports.checkout = function(repoName, branchName, done) {
+exports.checkout = function(repoName, branchName, done, cleanAlreadyDone) {
     exports.exec("../repos/" + repoName, "git fetch origin && git checkout " + branchName, function(err, stdout, stderr) {
         if (!err) {
             done();
+        } else if (!cleanAlreadyDone) {
+            exports.clean(repoName, exports.checkout.bind(this, repoName, branchName, done, true));
         } else {
             logger.log(true, ["checkout error on", branchName, "(", repoName, ")"]);
             logger.log(true, [err]);
@@ -37,7 +39,7 @@ exports.recover = function(repo, branchName, pushToken, done) {
 };
 
 exports.reset = function(repoName, branchName, done) {
-    exports.exec("../repos/" + repoName, "git reset --hard origin/" + branchName, function(err, stdout, stderr) {
+    exports.exec("../repos/" + repoName, "git reset --hard" + (branchName ? (" origin/" + branchName) : ""), function(err, stdout, stderr) {
         if (!err) {
             done();
         } else {
@@ -102,6 +104,12 @@ exports.push = function(pushToken, repoName, repoUrl, branchName, done, force) {
 
 exports.abortRebase = function(repoName, done) {
     exports.exec("../repos/" + repoName, "git rebase --abort", function(err, stdout, stderr) {
+        done(err);
+    });
+};
+
+exports.clean = function(repoName, done) {
+    exports.exec("../repos/" + repoName, "git clean -f -d -x", function(err, stdout, stderr) {
         done(err);
     });
 };
