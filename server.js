@@ -1,7 +1,8 @@
 var express = require("express"),
 io = require("socket.io"),
 http = require("http"),
-grebase = require("./modules/grebase.js");
+grebase = require("./modules/grebase.js"),
+logger = require("./modules/logger.js");
 
 var app = express();
 var serverIo = http.createServer(app);
@@ -9,6 +10,9 @@ var socketIo = io.listen(serverIo);
 
 // GRebase
 app.use(grebase.middleware(app, socketIo, express))
+
+// GRebase log for debuging
+.use("/log/", logger.middleware())
 
 // 404 not found
 .use(function(req, res, next) {

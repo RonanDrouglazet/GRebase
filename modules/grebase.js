@@ -395,7 +395,7 @@ var writeBackup = function(backup, done) {
     fs.writeFile(__dirname + "/../repos/backup.json", JSON.stringify(backup), function(err) {
         if (!err && done) {
             done();
-        } else {
+        } else if (err) {
             console.log("writeBackup error", err);
         }
     });

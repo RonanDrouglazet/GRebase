@@ -1,12 +1,13 @@
-var cp = require("child_process");
+var cp = require("child_process"),
+logger = require("./logger.js");
 
 exports.clone = function(url, done) {
     exports.exec("../repos/", "git clone " + url, function(err, stdout, stderr) {
         if (!err) {
             done();
         } else {
-            console.log("clone error on", url, "(", repoName, ")");
-            console.log(err);
+            logger.log(true, ["clone error on", url, "(", repoName, ")"]);
+            logger.log(true, [err]);
         }
     });
 };
@@ -16,8 +17,8 @@ exports.checkout = function(repoName, branchName, done) {
         if (!err) {
             done();
         } else {
-            console.log("checkout error on", branchName, "(", repoName, ")");
-            console.log(err);
+            logger.log(true, ["checkout error on", branchName, "(", repoName, ")"]);
+            logger.log(true, [err]);
         }
     });
 };
@@ -29,8 +30,8 @@ exports.recover = function(repo, branchName, pushToken, done) {
         if (!err) {
             done();
         } else {
-            console.log("recover error on", branchName, "(", repo.name, ")");
-            console.log(err);
+            logger.log(true, ["recover error on", branchName, "(", repo.name, ")"]);
+            logger.log(true, [err]);
         }
     });
 };
@@ -40,8 +41,8 @@ exports.reset = function(repoName, branchName, done) {
         if (!err) {
             done();
         } else {
-            console.log("reset error on", branchName, "(", repoName, ")");
-            console.log(err);
+            logger.log(true, ["reset error on", branchName, "(", repoName, ")"]);
+            logger.log(true, [err]);
         }
     });
 };
@@ -51,8 +52,8 @@ exports.pull = function(repoName, done) {
         if (!err) {
             done();
         } else {
-            console.log("pull error on", "(", repoName, ")");
-            console.log(err);
+            logger.log(true, ["pull error on", "(", repoName, ")"]);
+            logger.log(true, [err]);
         }
     });
 };
@@ -82,8 +83,8 @@ exports.branch = function(repoName, branchName, done) {
         if (!err) {
             done();
         } else {
-            console.log("branch error on", branchName, "(", repoName, ")");
-            console.log(err);
+            logger.log(true, ["branch error on", branchName, "(", repoName, ")"]);
+            logger.log(true, [err]);
         }
     });
 };
@@ -92,8 +93,8 @@ exports.push = function(pushToken, repoName, repoUrl, branchName, done, force) {
     repoUrl = repoUrl.replace("https://", "https://" + pushToken + "@");
     exports.exec("../repos/" + repoName, "git push " + (force ? "-f " : "") + repoUrl + " " + branchName, function(err, stdout, stderr) {
         if (err) {
-            console.log("push error on", branchName, "(", repoName, ") ", "with token: ", pushToken);
-            console.log(err);
+            logger.log(true, ["push error on", branchName, "(", repoName, ") ", "with token: ", pushToken]);
+            logger.log(true, [err]);
         }
         done(err);
     });
@@ -111,8 +112,8 @@ exports.getMissingCommits = function(repoName, branchName, rebaseOrigin, done) {
             var match = stdout.match(/\+/g);
             done(match ? match.length : 0);
         } else {
-            console.log("getMissingCommits error on", branchName, "(", repoName, ")");
-            console.log(err);
+            logger.log(true, ["getMissingCommits error on", branchName, "(", repoName, ")"]);
+            logger.log(true, [err]);
         }
     });
 };
@@ -126,13 +127,13 @@ exports.setGrebaseAuthor = function(repoName, done) {
 // helper
 exports.exec = function(localPath, command, done) {
     cp.exec("cd " + __dirname + "/" + localPath + " && " + command, function(error, stdout, stderr) {
-        //if (error && error !== "") {
+        /*if (error && error !== "") {
             console.log("#########################");
             console.log("Exec command: ", command);
             console.log("Exec path: ", localPath);
             console.log("Exec stderr: ", error);
             console.log("Exec stdout: ", stdout);
-        //}
+        }*/
         done(error, stdout, stderr);
     });
 };
