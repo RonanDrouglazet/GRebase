@@ -21,4 +21,4 @@ app.use(grebase.middleware(app, socketIo, express))
 });
 
 serverIo.listen(process.env.PORT || 8080);
-console.log("now listening on port ", (process.env.PORT || 8080));
+logger.log(true, ["now listening on port ", (process.env.PORT || 8080)]);

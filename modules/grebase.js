@@ -3,6 +3,7 @@ cookieParser = require('cookie-parser'),
 jsonConfig = require("../config.json"),
 gitApi = require("./gitApi.js"),
 gitCli = require("./gitCli.js"),
+logger = require("./logger.js"),
 fs = require("fs");
 
 var config, sIo, history;
@@ -117,7 +118,7 @@ var getToken = function(req, res) {
     var id = parseInt(req.param("repoId"));
     gitApi.oauth(req, res, function(token) {
         jsonConfig.repository[id].token = config.repository[id].token = token;
-        fs.writeFileSync("config.json", JSON.stringify(jsonConfig));
+        fs.writeFileSync(__dirname + "/../config.json", JSON.stringify(jsonConfig));
         res.write("<script>window.close()</script>");
         res.send();
         startWatching(id);
@@ -128,17 +129,17 @@ var cloneRepo = function(repo, done) {
     fs.mkdir(__dirname + "/../repos", function(err) {
         fs.exists(__dirname + "/../repos/" + repo.name, function(exist) {
             if (!exist) {
-                console.log("clone repository " + repo.name + " ongoing...");
-                console.log("This can take a short or very long time, depends of your repos size");
+                logger.log(true, ["clone repository " + repo.name + " ongoing..."]);
+                logger.log(true, ["This can take a short or very long time, depends of your repos size"]);
                 var url = repo.url.replace(/https:\/\/.*github/g, "https://" + repo.token + "@github");
                 gitCli.clone(url, function() {
-                    console.log("git clone finish on", url);
+                    logger.log(true, ["git clone finish on", url]);
                     gitCli.setGrebaseAuthor(repo.name, function() {
                         done();
                     });
                 });
             } else {
-                console.log(repo.name + " already exist, skip to the next repo");
+                logger.log(true, [repo.name + " already exist, skip to the next repo"]);
                 // abort an ongoing rebase when server was killed
                 gitCli.abortRebase(repo.name, function() {
                     gitCli.setGrebaseAuthor(repo.name, function() {
@@ -167,7 +168,7 @@ var updateBranchList = function(repo, done) {
 
             done(repo.branch);
         } else {
-            console.log("updateBranchList error", error);
+            logger.log(true, ["updateBranchList error", error]);
             done(repo.branch);
         }
     });
@@ -383,7 +384,7 @@ var readBackup = function(done) {
                         config.backup = {};
                         done(config.backup);
                     } else {
-                        console.log("readBackup error", err);
+                        logger.log(true, ["readBackup error", err]);
                     }
                 });
             }
@@ -396,7 +397,7 @@ var writeBackup = function(backup, done) {
         if (!err && done) {
             done();
         } else if (err) {
-            console.log("writeBackup error", err);
+            logger.log(true, ["writeBackup error", err]);
         }
     });
 };
