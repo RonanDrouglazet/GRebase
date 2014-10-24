@@ -1,6 +1,7 @@
 var appId = require("../config.json").GitHub_API,
 https = require('https'),
 querystring = require('querystring'),
+logger = require("./logger.js"),
 eventHandlers = {},
 pollOngoing = {};
 
@@ -177,9 +178,9 @@ exports.gitHubApiRequest = function(accessToken, method, path, params, headers, 
             try {
                 dataObject = dataObject !== "" ? JSON.parse(dataObject) : null;
             } catch(e) {
-                console.log(method, path, params);
-                console.log(dataObject);
-                console.log(e);
+                logger.log(true, [method, path, params]);
+                logger.log(true, [dataObject]);
+                logger.log(true, [e]);
             }
 
             done(null, dataObject, res);
@@ -187,7 +188,7 @@ exports.gitHubApiRequest = function(accessToken, method, path, params, headers, 
     });
 
     r.on('error', function(error) {
-        console.log(error);
+        logger.log(true, [error]);
         done(error, null, null);
     });
 
@@ -201,10 +202,10 @@ exports.gitHubApiRequest = function(accessToken, method, path, params, headers, 
 // see to merge this function with exports.gitHubApiRequest
 var sendResponseForOAuth = function(req, res, done) {
     var access_token, dataObject, options = {
-      hostname: "github.com",
-      port: 443,
-      path: "/login/oauth/access_token",
-      method: "POST"
+        hostname: "github.com",
+        port: 443,
+        path: "/login/oauth/access_token",
+        method: "POST"
     };
 
     var gitResponse = https.request(options, function(resG) {
@@ -219,7 +220,7 @@ var sendResponseForOAuth = function(req, res, done) {
     });
 
     gitResponse.on("error", function(error) {
-        console.log(error);
+        logger.log(true, ["sendResponseForOAuth error", error]);
         res.write(error);
         res.send();
     });

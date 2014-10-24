@@ -135,13 +135,13 @@ exports.setGrebaseAuthor = function(repoName, done) {
 // helper
 exports.exec = function(localPath, command, done) {
     cp.exec("cd " + __dirname + "/" + localPath + " && " + command, function(error, stdout, stderr) {
-        /*if (error && error !== "") {
-            console.log("#########################");
-            console.log("Exec command: ", command);
-            console.log("Exec path: ", localPath);
-            console.log("Exec stderr: ", error);
-            console.log("Exec stdout: ", stdout);
-        }*/
+        //if (error && error !== "") {
+            logger.log(true, ["#########################"]);
+            logger.log(true, ["Exec command: ", command]);
+            logger.log(true, ["Exec path: ", localPath]);
+            logger.log(true, ["Exec stderr: ", error]);
+            logger.log(true, ["Exec stdout: ", stdout]);
+        //}
         done(error, stdout, stderr);
     });
 };
