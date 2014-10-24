@@ -3,6 +3,8 @@
     "version": "0.1.0",
     "devDependencies": {
         "express": "~4.0.x",
-        "socket.io": "*"
+        "socket.io": "*",
+        "cookie-parser": "~1.0.x",
+        "cookie-session": "~1.0.x"
     }
 }

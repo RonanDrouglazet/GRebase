@@ -107,3 +107,30 @@ body {
 .badge {
   cursor: pointer;
 }
+
+.branch {
+  width: 100%;
+  min-height: 28px;
+  background-color: #EEE;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  border-radius: 5px;
+  padding: 4px 10px 0px 0px;
+  text-align: left;
+}
+.branch span {
+  margin-left: 8px;
+}
+.table-responsive .branch {
+  margin-top: 5px;
+}
+.glyphicon {
+  cursor: pointer;
+}
+.glyphicon:hover {
+  color: green;
+}
+.label {
+  width: 64px;
+  display: inline-block;
+}
