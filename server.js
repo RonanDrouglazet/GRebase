@@ -14,6 +14,9 @@ app.use(grebase.middleware(app, socketIo, express))
 // GRebase log for debuging
 .use("/log/", logger.middleware())
 
+// Static (ui)
+.use("/", express.static(__dirname + "/static/"))
+
 // 404 not found
 .use(function(req, res, next) {
     res.setHeader("Content-Type", "text/plain");

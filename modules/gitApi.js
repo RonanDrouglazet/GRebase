@@ -154,7 +154,7 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
  */
 exports.gitHubApiRequest = function(accessToken, method, path, params, headers, done) {
     var dataObject = "", options = {
-      headers: {"User-Agent": "BackNode", "Authorization": "token " + accessToken, "Content-Length": params ? JSON.stringify(params).length : 0},
+      headers: {"User-Agent": "GRebase", "Authorization": "token " + accessToken, "Content-Length": params ? JSON.stringify(params).length : 0},
       hostname: 'api.github.com',
       port: 443,
       path: path,

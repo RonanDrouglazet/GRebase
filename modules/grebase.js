@@ -25,9 +25,6 @@ exports.middleware = function(app, socketIo, express) {
     // ask api
     app.get("/ask/:type/:branch/:repo", ask);
 
-    // static
-    app.use("/", express.static(__dirname + "/../static/"));
-
     // socket io event for web interface
     sIo = socketIo;
     sIo.on("connection", function(socket) {
