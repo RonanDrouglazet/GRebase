@@ -32,10 +32,11 @@ exports.middleware = function(app, socketIo, express) {
     sIo = socketIo;
     sIo.on("connection", function(socket) {
         updateInterface();
-        updateHistory();
+        updateHistoryOnInterface();
     });
 
     genConfigAndStartWatching(jsonConfig);
+    getHistory();
 
     return function(req, res, next) {
         next();
@@ -506,16 +507,22 @@ var updateInterface = function() {
     sIo.sockets.emit("update", config);
 };
 
-var updateHistory = function() {
+var updateHistoryOnInterface = function() {
     sIo.sockets.emit("history", history);
 }
 
-var addToHistory = function(user, message) {
-    if (!history) {
+var getHistory = function() {
+    try {
+        history = JSON.parse(fs.readFileSync(__dirname + "/../repos/history.json", "utf8"));
+    } catch (e) {
         history = [];
     }
+}
+
+var addToHistory = function(user, message) {
     var date = new Date();
     var dateToMessage = date.getHours() + ":" + date.getMinutes() + " - " + date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
     history.push({id: history.length, user: user, message: message, on: dateToMessage});
-    updateHistory();
+    updateHistoryOnInterface();
+    fs.writeFileSync(__dirname + "/../repos/history.json", JSON.stringify(history));
 };
