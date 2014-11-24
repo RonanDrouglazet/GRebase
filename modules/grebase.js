@@ -246,24 +246,29 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
                         addToHistory(user, "recover " + branch.name);
                     });
                 } else {
-                    refreshBranch(repo, branch, function() {
-                        tryRebase(repo, branch, function(rError, rUpToDate) {
-                            tryMerge(repo, branch, function(mError, mUpToDate) {
+                    refreshBranch(repo, branch, function(refreshError) {
+                        if (refreshError) {
+                            branch.status = STATUS.UNCHECKED;
+                            next();
+                        } else {
+                            tryRebase(repo, branch, function(rError, rUpToDate) {
+                                tryMerge(repo, branch, function(mError, mUpToDate) {
 
-                                if (rError && mError) {
-                                    branch.status = STATUS.REBASE_FAILED;
-                                    gitApi.createIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name, "conflict detected with " + branch.parent);
-                                } else if (!mUpToDate && !rUpToDate) {
-                                    branch.status = STATUS.NEED_REBASE;
-                                    gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
-                                } else {
-                                    branch.status = STATUS.UP_TO_DATE;
-                                    gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
-                                }
+                                    if (rError && mError) {
+                                        branch.status = STATUS.REBASE_FAILED;
+                                        gitApi.createIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name, "conflict detected with " + branch.parent);
+                                    } else if (!mUpToDate && !rUpToDate) {
+                                        branch.status = STATUS.NEED_REBASE;
+                                        gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
+                                    } else {
+                                        branch.status = STATUS.UP_TO_DATE;
+                                        gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
+                                    }
 
-                                next();
+                                    next();
+                                });
                             });
-                        });
+                        }
                     });
                 }
             });
@@ -278,18 +283,22 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
 
 var refreshBranch = function(repo, branch, done) {
     gitCli.reset(repo.name, branch.name, function() {
-        gitCli.pull(repo.name, function() {
-            gitApi.getCommit(repo.token, repo.owner, repo.name, branch.sha, function(error, data) {
-                if (data.commit) {
-                    branch.lastCommit = data.commit.author.name;
-                }
+        gitCli.pull(repo.name, function(err) {
+            if (err) {
+                done(err);
+            } else {
+                gitApi.getCommit(repo.token, repo.owner, repo.name, branch.sha, function(error, data) {
+                    if (data.commit) {
+                        branch.lastCommit = data.commit.author.name;
+                    }
 
-                // get number of missing commits
-                gitCli.getMissingCommits(repo.name, branch.name, branch.parent, function(missingCommits) {
-                    branch.missCommit = missingCommits;
-                    done();
+                    // get number of missing commits
+                    gitCli.getMissingCommits(repo.name, branch.name, branch.parent, function(missingCommits) {
+                        branch.missCommit = missingCommits;
+                        done();
+                    });
                 });
-            });
+            }
         });
     });
 }

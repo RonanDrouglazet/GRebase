@@ -51,12 +51,12 @@ exports.reset = function(repoName, branchName, done) {
 
 exports.pull = function(repoName, done) {
     exports.exec("../repos/" + repoName, "git pull --rebase", function(err, stdout, stderr) {
-        if (!err) {
-            done();
-        } else {
+        if (err) {
             logger.log(true, ["pull error on", "(", repoName, ")"]);
             logger.log(true, [err]);
+
         }
+        done(err);
     });
 };
 
