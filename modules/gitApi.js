@@ -127,7 +127,7 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
                         while (events[0].id !== lastEventId) {
                             if (eventHandlers[repo][events[0].type]) {
                                 eventHandlers[repo][events[0].type].forEach(function(callback, index) {
-                                    callback(events[0]);
+                                    callback(events[0], events[0].type);
                                 });
                             }
                             events.shift()

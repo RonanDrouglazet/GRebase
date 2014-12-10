@@ -69,6 +69,7 @@ var startWatching = function(repoIndex) {
                 addToRepoQueue(repoIndex, aBranch);
                 gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.PUSH, onGitHubEvent);
                 gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.CREATE, onGitHubEvent);
+                gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.DELETE, onGitHubEvent);
             });
         });
     });
@@ -97,7 +98,7 @@ var addToRepoQueue = function(repoIndex, aBranch) {
     }
 }
 
-var onGitHubEvent = function(gitHubEvent) {
+var onGitHubEvent = function(gitHubEvent, gitHubEventName) {
     var repoName = gitHubEvent.repo.name.split("/")[1];
     var repoIndex = getIndexFromName(config.repository, repoName);
     var repo = config.repository[repoIndex];
@@ -106,9 +107,14 @@ var onGitHubEvent = function(gitHubEvent) {
     var branchToUpdate;
 
     updateBranchList(repo, function(branchList) {
-        branchIndex = getIndexFromName(repo.branch, branchName);
-        branchToUpdate = [branchIndex].concat(getRelatedBranchIndex(repo, branchName));
-        addToRepoQueue(repoIndex, branchToUpdate);
+        if (gitHubEventName === gitApi.EVENTS.DELETE) {
+            gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branchName);
+            updateInterface();
+        } else {
+            branchIndex = getIndexFromName(repo.branch, branchName);
+            branchToUpdate = [branchIndex].concat(getRelatedBranchIndex(repo, branchName));
+            addToRepoQueue(repoIndex, branchToUpdate);
+        }
     });
 };
 
