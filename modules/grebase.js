@@ -158,7 +158,7 @@ var cloneRepo = function(repo, done) {
 //update branch list from remote project, and keep previous status
 var updateBranchList = function(repo, done) {
     gitApi.getAllBranch(repo.token, repo.owner, repo.name, function(error, branchList) {
-        if (!error && branchList) {
+        if (!error && branchList && branchList.forEach) {
             var old = [];
             if (repo.branch) {
                 old = repo.branch.slice();
@@ -172,8 +172,8 @@ var updateBranchList = function(repo, done) {
 
             done(repo.branch);
         } else {
-            logger.log(true, ["updateBranchList error", error]);
-            done(repo.branch);
+            logger.log(true, ["updateBranchList error - repo no longer exist ?", branchList]);
+            //done(repo.branch);
         }
     });
 };
@@ -389,17 +389,17 @@ var readBackup = function(done) {
     } else {
         fs.readFile(backupFile, function(err, data) {
             if (!err) {
-                config.backup = JSON.parse(data.toString());
-                done(config.backup);
+                try {
+                    config.backup = JSON.parse(data.toString());
+                    done(config.backup);
+                } catch (e) {
+                    logger.log(true, ["error on backup parse", e]);
+                    config.backup = {};
+                    writeBackup(config.backup, done.bind(this, config.backup));
+                }
             } else {
-                fs.appendFile(backupFile, {}, function(err) {
-                    if (!err) {
-                        config.backup = {};
-                        done(config.backup);
-                    } else {
-                        logger.log(true, ["readBackup error", err]);
-                    }
-                });
+                config.backup = {};
+                writeBackup(config.backup, done.bind(this, config.backup));
             }
         });
     }
