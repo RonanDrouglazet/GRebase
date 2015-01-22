@@ -53,7 +53,7 @@ var removeConnectButton = function(nProject) {
 }
 
 var getBranchData = function(project, branch) {
-    var branchClassName = project.name + "_" + branch.name.replace(/\./ig, "");
+    var branchClassName = project.name + "_" + branch.name.replace(/\.|\//ig, "_");
     branch.lastCommit = branch.lastCommit.replace("<", "(").replace(">", ")");
 
     return {
@@ -213,7 +213,7 @@ var cleanBranchIfNoRemote = function(project) {
         var isExist = false;
         var nBranchName = nBranch.className.replace("branch ", "").replace(project.name + "_", "");
         project.branch.forEach(function(oBranch) {
-            if (oBranch.name.replace(/\./ig, "") === nBranchName) {
+            if (oBranch.name.replace(/\.|\//ig, "_") === nBranchName) {
                 isExist = true;
             }
         });
