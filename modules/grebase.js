@@ -287,10 +287,12 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
     }
 };
 
-var refreshBranch = function(repo, branch, done) {
+var refreshBranch = function(repo, branch, done, rebaseAbortAlreadyDone) {
     gitCli.reset(repo.name, branch.name, function() {
         gitCli.pull(repo.name, function(err) {
-            if (err) {
+            if (err && !rebaseAbortAlreadyDone) {
+                gitCli.abortRebase(repo.name, this.refreshBranch.bind(this, repo, branch, done, true));
+            } else if (err) {
                 done(err);
             } else {
                 gitApi.getCommit(repo.token, repo.owner, repo.name, branch.sha, function(error, data) {
