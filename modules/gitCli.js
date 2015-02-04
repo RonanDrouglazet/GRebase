@@ -17,7 +17,11 @@ exports.checkout = function(repoName, branchName, done, cleanAlreadyDone) {
         if (!err) {
             done();
         } else if (!cleanAlreadyDone) {
-            exports.clean(repoName, exports.checkout.bind(this, repoName, branchName, done, true));
+            exports.clean(repoName,
+                exports.reset.bind(this, repoName, null,
+                    exports.checkout.bind(this, repoName, branchName, done, true)
+                )
+            );
         } else {
             logger.log(true, ["checkout error on", branchName, "(", repoName, ")"]);
             logger.log(true, [err]);
