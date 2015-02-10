@@ -141,6 +141,10 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
                 }
 
                 setTimeout(pollRequest, time * 1000);
+            } else {
+                // if error, retry it
+                logger.log(true, ["loopPollForRepoEvent", error]);
+                loopPollForRepoEvent(accessToken, owner, repo);
             }
         });
     }
@@ -188,7 +192,7 @@ exports.gitHubApiRequest = function(accessToken, method, path, params, headers, 
     });
 
     r.on('error', function(error) {
-        logger.log(true, [error]);
+        logger.log(true, [method, path, params, error]);
         done(error, null, null);
     });
 
