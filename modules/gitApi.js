@@ -3,7 +3,7 @@ https = require('https'),
 querystring = require('querystring'),
 logger = require("./logger.js"),
 eventHandlers = {},
-pollOngoing = {};
+pollOngoing = {reposIndex: [], repos: [], current: null, time: null};
 
 // GitApi event (https://developer.github.com/v3/activity/events/types/)
 exports.EVENTS = {
@@ -104,52 +104,66 @@ exports.addEventOnRepo = function(accessToken, owner, repo, eventName, handler) 
 
     eventHandlers[repo][eventName].push(handler);
 
-    if (!pollOngoing[repo]) {
-        pollOngoing[repo] = true;
-        loopPollForRepoEvent(accessToken, owner, repo);
+    var repoInfos = {a: accessToken, o: owner, r: repo, lei: null, etag: null};
+    if (pollOngoing.reposIndex.indexOf(repoInfos.o + repoInfos.r) === -1) {
+        console.log('add repo', repo, 'on list');
+        pollOngoing.reposIndex.push(repoInfos.o + repoInfos.r);
+        pollOngoing.repos.push(repoInfos);
+    }
+
+    if (pollOngoing.current === null) {
+        console.log('start loop');
+        pollOngoing.current = 0;
+        loopPollForRepoEvent();
     }
 }
 
-var loopPollForRepoEvent = function(accessToken, owner, repo) {
-    var etag = null;
-    var lastEventId = null;
+var loopPollForRepoEvent = function() {
+    var infos = pollOngoing.repos[pollOngoing.current];
+    console.log('loopPollForRepoEvent', infos.r);
+    exports.gitHubApiRequest(infos.a, "GET", "/repos/" + infos.o + "/" + infos.r + "/events", null, infos.etag, function(error, events, response) {
+        if (!error) {
+            var h = response.headers;
+            var time =  parseInt(h["x-poll-interval"], 10);
+            var ntag = h.etag;
 
-    var pollRequest = function() {
-        exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/events", null, etag, function(error, events, response) {
-            if (!error) {
-                var h = response.headers;
-                var time =  parseInt(h["x-poll-interval"], 10);
-                var ntag = h.etag;
-
-                if (h.status === "200 OK") {
-                    var newEventId = events[0].id;
-                    if (etag) {
-                        while (events[0].id !== lastEventId) {
-                            if (eventHandlers[repo][events[0].type]) {
-                                eventHandlers[repo][events[0].type].forEach(function(callback, index) {
-                                    callback(events[0], events[0].type);
-                                });
-                            }
-                            events.shift()
+            if (h.status === "200 OK") {
+                var newEventId = events[0].id;
+                if (infos.etag) {
+                    while (events[0].id !== infos.lei) {
+                        if (eventHandlers[infos.r][events[0].type]) {
+                            console.log('dispatch event', events[0].type, 'for', infos.r);
+                            eventHandlers[infos.r][events[0].type].forEach(function(callback, index) {
+                                callback(events[0], events[0].type);
+                            });
                         }
+                        events.shift()
                     }
-                    lastEventId = newEventId;
                 }
-
-                if (ntag) {
-                    etag = {"If-None-Match": ntag};
-                }
-
-                setTimeout(pollRequest, time * 1000);
-            } else {
-                // if error, retry it
-                logger.log(true, ["loopPollForRepoEvent", error]);
-                loopPollForRepoEvent(accessToken, owner, repo);
+                infos.lei = newEventId;
             }
-        });
-    }
 
-    pollRequest();
+            if (ntag) {
+                infos.etag = {"If-None-Match": ntag};
+            }
+
+            if (pollOngoing.current === pollOngoing.repos.length - 1) {
+                pollOngoing.current = 0;
+            } else {
+                pollOngoing.current++;
+            }
+
+            if (time) {
+                pollOngoing.time = time;
+            }
+            console.log('next in', pollOngoing.time);
+            setTimeout(loopPollForRepoEvent, pollOngoing.time * 1000);
+        } else {
+            // if error, retry it
+            logger.log(true, ["loopPollForRepoEvent", error]);
+            loopPollForRepoEvent();
+        }
+    });
 }
 
 /*
