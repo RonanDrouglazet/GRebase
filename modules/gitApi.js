@@ -140,7 +140,11 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
                     etag = {"If-None-Match": ntag};
                 }
 
-                setTimeout(pollRequest, time * 1000);
+                if (time) {
+                    pollOngoing[repo] = time;
+                }
+
+                setTimeout(pollRequest, pollOngoing[repo] * 1000);
             } else {
                 // if error, retry it
                 logger.log(true, ["loopPollForRepoEvent", error]);
