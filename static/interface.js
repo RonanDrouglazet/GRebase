@@ -10,7 +10,7 @@ var STATUS = {
 // update interface (branch..)
 var updateUI = function(data) {
     data.repository.forEach(function(oProject, index) {
-        var nProject = getProjectContainer(oProject.name);
+        var nProject = getProjectContainer(oProject);
 
         if (oProject.branch) {
             oProject.branch.forEach(function(oBranch, i) {
@@ -66,13 +66,19 @@ var getBranchData = function(project, branch) {
 }
 
 // get or create project container
-var getProjectContainer = function(projectName) {
-    var container = document.getElementById(projectName);
+var getProjectContainer = function(project) {
+    var container = document.getElementById(project.name);
     if (!container) {
-        $(".main").append("<div id='[PN]'><h2 class='sub-header'>[PN]</h2>".replace(/\[PN\]/ig, projectName) +
+        $(".main").append("<div id='[PN]'><h2 class='sub-header'>[PN]".replace(/\[PN\]/ig, project.name) +
+            "<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='refresh project's branch></span></h2>" +
             "<div class='table-responsive'><div class='danger'></div><div class='warning'></div><div class='success'></div><div class='default'></div></div></div>");
-        $(".nav-sidebar").append("<li><a href='#[PN]'>[PN]</a></li>".replace(/\[PN\]/ig, projectName));
-        container = document.getElementById(projectName);
+        $(".nav-sidebar").append("<li><a href='#[PN]'>[PN]</a></li>".replace(/\[PN\]/ig, project.name));
+        container = document.getElementById(project.name);
+        var refresh = container.getElementsByClassName('glyphicon-refresh')[0];
+        $(refresh).click(function() {
+            socket.emit("refreshProject", {index: project.id});
+        });
+        $(refresh).tooltip();
     }
     return container;
 }

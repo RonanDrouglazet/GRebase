@@ -134,3 +134,8 @@ body {
   width: 64px;
   display: inline-block;
 }
+
+.glyphicon-refresh {
+  font-size: 18px;
+  margin-left: 10px;
+}

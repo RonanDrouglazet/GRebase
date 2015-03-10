@@ -30,6 +30,10 @@ exports.middleware = function(app, socketIo, express) {
     sIo.on("connection", function(socket) {
         updateInterface();
         updateHistoryOnInterface();
+
+        socket.on("refreshProject", function(data) {
+            startWatching(data.index, false);
+        });
     });
 
     genConfigAndStartWatching(jsonConfig);
@@ -50,12 +54,12 @@ var genConfigAndStartWatching = function(json) {
         config.repository[index].id = index;
 
         if (repo.token) {
-            startWatching(index);
+            startWatching(index, true);
         }
     });
 };
 
-var startWatching = function(repoIndex) {
+var startWatching = function(repoIndex, bindEvent) {
     var repo = config.repository[repoIndex];
     cloneRepo(repo, function() {
         updateBranchList(repo, function(branchList) {
@@ -67,9 +71,12 @@ var startWatching = function(repoIndex) {
                 });
 
                 addToRepoQueue(repoIndex, aBranch);
-                gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.PUSH, onGitHubEvent);
-                gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.CREATE, onGitHubEvent);
-                gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.DELETE, onGitHubEvent);
+
+                if (bindEvent) {
+                    gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.PUSH, onGitHubEvent);
+                    gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.CREATE, onGitHubEvent);
+                    gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.DELETE, onGitHubEvent);
+                }
             });
         });
     });
@@ -125,7 +132,7 @@ var getToken = function(req, res) {
         fs.writeFileSync(__dirname + "/../config.json", JSON.stringify(jsonConfig));
         res.write("<script>window.close()</script>");
         res.send();
-        startWatching(id);
+        startWatching(id, true);
     });
 };
 
