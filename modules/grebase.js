@@ -76,6 +76,7 @@ var startWatching = function(repoIndex, bindEvent) {
                     gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.PUSH, onGitHubEvent);
                     gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.CREATE, onGitHubEvent);
                     gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.DELETE, onGitHubEvent);
+                    gitApi.addEventOnRepo(repo.token, repo.owner, repo.name, gitApi.EVENTS.PULL_REQUEST, onGitHubEvent);
                 }
             });
         });
@@ -310,7 +311,17 @@ var refreshBranch = function(repo, branch, done, rebaseAbortAlreadyDone) {
                     // get number of missing commits
                     gitCli.getMissingCommits(repo.name, branch.name, branch.parent, function(missingCommits) {
                         branch.missCommit = missingCommits;
-                        done();
+
+                        // get the associated pull request
+                        gitApi.getPullRequest(repo.token, repo.owner, repo.name, branch.name, branch.parent, function(error, data) {
+                            if (data[0]) {
+                                branch.pullRequest = {};
+                                branch.pullRequest.number = data[0].number;
+                                branch.pullRequest.title = data[0].title;
+                                branch.pullRequest.url = data[0].html_url;
+                            }
+                            done();
+                        });
                     });
                 });
             }

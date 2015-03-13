@@ -90,6 +90,7 @@ var createBranch = function(oProject, oBranch, branchData) {
             "<span class='glyphicon glyphicon-cog'></span>" + // setting
             "<span>" + oBranch.name + branchData.parentBranchName + "</span>" + // branch name
             "<span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'>" + (oBranch.missCommit || "") + "</span>" + // badge miss commit
+            "<span class='btn-link pull-right' style='font-size:11px' data-toggle='tooltip' data-placement='top' title='" + (oBranch.pullRequest ? oBranch.pullRequest.title : "") + "'>" + (oBranch.pullRequest ? "#"+oBranch.pullRequest.number : "") + "</span>" + //pull request
             "<span class='text-muted pull-right' style='font-size:11px'>" + oBranch.lastCommit + "</span>" + //last commit author
         "</div>"
     );
@@ -109,6 +110,15 @@ var createBranch = function(oProject, oBranch, branchData) {
     $(missCommit).tooltip();
     $(missCommit).data(buttonData);
     $(missCommit).click(showDiff);
+
+    // tooltip and click on the pull request #
+    var pullRequest = $("." + branchData.branchClassName + " span").get(4);
+    $(pullRequest).tooltip();
+    $(pullRequest).data(buttonData);
+    $(pullRequest).click(function() {
+        var data = $(this).data();
+        window.open(data.oBranch.pullRequest.url, "", "width=1050, height=700, scrollbars=1");
+    });
 }
 
 var updateBranch = function(oProject, oBranch, branchData) {
@@ -119,7 +129,8 @@ var updateBranch = function(oProject, oBranch, branchData) {
         var setting = branchElement.get(1);
         var branchName = branchElement.get(2);
         var missCommit = branchElement.get(3);
-        var lastCommit = branchElement.get(4);
+        var pullRequest = branchElement.get(4);
+        var lastCommit = branchElement.get(5);
         var ongoing = $("." + branch.className.split(" ")[1] + "_ongoing");
 
         label.className = "label label-" + branchData.classColor;
@@ -156,6 +167,15 @@ var updateBranch = function(oProject, oBranch, branchData) {
             missCommit.innerHTML = "";
         }
 
+        // if we have pull request information, we display it
+        if (oBranch.pullRequest) {
+            pullRequest.title = oBranch.pullRequest.title;
+            pullRequest.innerHTML = "#"+oBranch.pullRequest.number;
+        } else {
+            pullRequest.title = "";
+            pullRequest.innerHTML = "";
+        }
+
         var buttonData = {
             oBranch: oBranch,
             oProject: oProject
@@ -163,6 +183,9 @@ var updateBranch = function(oProject, oBranch, branchData) {
 
         $(setting).data(buttonData);
         $(missCommit).data(buttonData);
+        $(pullRequest).tooltip('destroy');
+        $(pullRequest).tooltip();
+        $(pullRequest).data(buttonData);
     }
 }
 
