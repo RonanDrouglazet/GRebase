@@ -70,10 +70,16 @@ var getProjectContainer = function(project) {
     var container = document.getElementById(project.name);
     if (!container) {
         $(".main").append("<div id='[PN]'><h2 class='sub-header'>[PN]".replace(/\[PN\]/ig, project.name) +
-            "<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='refresh project's branch></span></h2>" +
+            "<span class='glyphicon glyphicon-new-window' data-toggle='tooltip' data-placement='right' title='open repository'></span>" +
+            "<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='refresh project&#39;s branches'></span></h2>" +
             "<div class='table-responsive'><div class='danger'></div><div class='warning'></div><div class='success'></div><div class='default'></div></div></div>");
         $(".nav-sidebar").append("<li><a href='#[PN]'>[PN]</a></li>".replace(/\[PN\]/ig, project.name));
         container = document.getElementById(project.name);
+        var openRepo = container.getElementsByClassName('glyphicon-new-window')[0];
+        $(openRepo).click(function() {
+            window.open(project.url);
+        });
+        $(openRepo).tooltip();
         var refresh = container.getElementsByClassName('glyphicon-refresh')[0];
         $(refresh).click(function() {
             socket.emit("refreshProject", {index: project.id});
