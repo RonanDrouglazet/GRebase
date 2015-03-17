@@ -43,7 +43,7 @@ var addConnectButton = function(project, id) {
     if ($(project).children(".btn-success").length === 0) {
         $(project).append("<button type='button' class='btn btn-success'>Connect you to start the process</button>");
         $(project).children("button").click(function() {
-            window.open("/getToken/" + id, "", "width=1000, height=700");
+            window.open("/getToken/" + id, "", "width=1050, height=700, scrollbars=1");
         });
     }
 }
@@ -202,7 +202,7 @@ var showBranchActions = function() {
 var ask = function() {
     var data = $('.modalAsk').data();
     var type = this.className.split(" ")[0];
-    window.open("/ask/" + type + "/" + data.oBranch.name + "/" + data.oProject.name, "", "width=1000, height=700");
+    window.open("/ask/" + type + "/" + data.oBranch.name + "/" + data.oProject.name, "", "width=1050, height=700, scrollbars=1");
     console.log("/ask/" + type + "/" + data.oBranch.name + "/" + data.oProject.name);
     $('.modalAsk').modal('hide');
 }
@@ -210,7 +210,7 @@ var ask = function() {
 var showDiff = function() {
     var data = $(this).data();
     var compareUrl = data.oProject.url.replace(".git", "") + "/compare/" + data.oBranch.name + "..." + data.oBranch.parent;
-    window.open(compareUrl, "", "width=1000, height=700");
+    window.open(compareUrl, "", "width=1050, height=700, scrollbars=1");
 }
 
 // clean branch if whe have not a remote ref for it
