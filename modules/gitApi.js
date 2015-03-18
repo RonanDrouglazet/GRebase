@@ -62,6 +62,10 @@ exports.getUser = function(userToken, done) {
     exports.gitHubApiRequest(userToken, "GET", "/user", null, null, done);
 }
 
+exports.getPullRequest = function(userToken, owner, repo, head, base, done) {
+    exports.gitHubApiRequest(userToken, "GET", "/repos/" + owner + "/" + repo + "/pulls?head=" + owner + ":" + head + "&base=" + base, null, null, done);
+}
+
 exports.createIssueOnRepo = function(accessToken, owner, repo, title, body) {
     exports.doesIssueExist(accessToken, owner, repo, title, function(error, issue) {
         if (!error && !issue) {
