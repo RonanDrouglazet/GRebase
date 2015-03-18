@@ -123,7 +123,7 @@ var createBranch = function(oProject, oBranch, branchData) {
     $(pullRequest).data(buttonData);
     $(pullRequest).click(function() {
         var data = $(this).data();
-        window.open(data.oBranch.pullRequest.url, "", "width=1050, height=700, scrollbars=1");
+        window.open(data.oBranch.pullRequest.html_url, "", "width=1050, height=700, scrollbars=1");
     });
 }
 

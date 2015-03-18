@@ -316,12 +316,7 @@ var refreshBranch = function(repo, branch, done, rebaseAbortAlreadyDone) {
 
                         // get the associated pull request
                         gitApi.getPullRequest(repo.token, repo.owner, repo.name, branch.name, branch.parent, function(error, data) {
-                            if (data[0]) {
-                                branch.pullRequest = {};
-                                branch.pullRequest.number = data[0].number;
-                                branch.pullRequest.title = data[0].title;
-                                branch.pullRequest.url = data[0].html_url;
-                            }
+                            branch.pullRequest = data.length ? data[0] : null;
                             done();
                         });
                     });
