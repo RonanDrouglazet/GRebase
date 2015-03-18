@@ -110,7 +110,9 @@ var onGitHubEvent = function(gitHubEvent, gitHubEventName) {
     var repoName = gitHubEvent.repo.name.split("/")[1];
     var repoIndex = getIndexFromName(config.repository, repoName);
     var repo = config.repository[repoIndex];
-    var branchName = gitHubEvent.payload.ref.replace("refs/heads/", "");
+    var branchName = gitHubEvent.payload.ref ?
+        gitHubEvent.payload.ref.replace("refs/heads/", "") :
+        gitHubEvent.payload.pull_request.head.ref.replace("refs/heads/", "");
     var branchIndex;
     var branchToUpdate;
 
