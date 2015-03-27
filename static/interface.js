@@ -37,6 +37,12 @@ var updateUI = function(data) {
             }
         }
     });
+
+    // bind events
+    $(".branch-author").on("click", function() {
+        var selectedAuthorName = $(this).text();
+        $("#search-input").val(selectedAuthorName).trigger("input").focus();
+    });
 }
 
 var addConnectButton = function(project, id) {
@@ -96,8 +102,8 @@ var createBranch = function(oProject, oBranch, branchData) {
             "<span class='glyphicon glyphicon-cog'></span>" + // setting
             "<span>" + oBranch.name + branchData.parentBranchName + "</span>" + // branch name
             "<span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'>" + (oBranch.missCommit || "") + "</span>" + // badge miss commit
-            "<span class='btn-link pull-right' style='font-size:11px' data-toggle='tooltip' data-placement='top' title='" + (oBranch.pullRequest ? oBranch.pullRequest.title : "") + "'>" + (oBranch.pullRequest ? "#"+oBranch.pullRequest.number : "") + "</span>" + //pull request
-            "<span class='text-muted pull-right' style='font-size:11px'>" + oBranch.lastCommit + "</span>" + //last commit author
+            "<span class='btn-link pull-right' data-toggle='tooltip' data-placement='top' title='" + (oBranch.pullRequest ? oBranch.pullRequest.title : "") + "'>" + (oBranch.pullRequest ? "#"+oBranch.pullRequest.number : "") + "</span>" + //pull request
+            "<span class='text-muted pull-right'><button type='button' class='btn btn-default btn-xs branch-author'>" + oBranch.lastCommit + "</button></span>" + //last commit author
         "</div>"
     );
 
@@ -136,7 +142,7 @@ var updateBranch = function(oProject, oBranch, branchData) {
         var branchName = branchElement.get(2);
         var missCommit = branchElement.get(3);
         var pullRequest = branchElement.get(4);
-        var lastCommit = branchElement.get(5);
+        var lastCommit = $(branch).find(".branch-author").get(0);
         var ongoing = $("." + branch.className.split(" ")[1] + "_ongoing");
 
         label.className = "label label-" + branchData.classColor;
@@ -343,10 +349,11 @@ var addActionOnHistory = function(data) {
 }
 
 //filter branch with input
-$(".form-control").on("input", function() {
+$("#search-input").on("input", function() {
     var r = new RegExp(this.value.replace(/\./ig, ""), "ig");
     $('.branch').each(function() {
-        if (!r.test(this.className) && !$(this.parentNode.parentNode).hasClass("infos")) {
+        var branchAuthorName = $(this).find(".branch-author").text();
+        if (!r.test(this.className) && !r.test(branchAuthorName) && !$(this.parentNode.parentNode).hasClass("infos")) {
             $(this).hide();
         } else {
             $(this).show();
