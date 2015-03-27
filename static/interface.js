@@ -101,9 +101,9 @@ var createBranch = function(oProject, oBranch, branchData) {
             "<span class='label label-" + branchData.classColor + "'>" + branchData.classColor.toUpperCase() + "</span>" + // status
             "<span class='glyphicon glyphicon-cog'></span>" + // setting
             "<span>" + oBranch.name + branchData.parentBranchName + "</span>" + // branch name
-            "<span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'>" + (oBranch.missCommit || "") + "</span>" + // badge miss commit
-            "<span class='btn-link pull-right' data-toggle='tooltip' data-placement='top' title='" + (oBranch.pullRequest ? oBranch.pullRequest.title : "") + "'>" + (oBranch.pullRequest ? "#"+oBranch.pullRequest.number : "") + "</span>" + //pull request
-            "<span class='text-muted pull-right'><button type='button' class='btn btn-default btn-xs branch-author'>" + oBranch.lastCommit + "</button></span>" + //last commit author
+            "<div class='pull-right fixed-width-small'><span class='badge pull-right' data-toggle='tooltip' data-placement='top' data-html='true' title='missing commits <br/> click to show them'>" + (oBranch.missCommit || "") + "</span></div>" + // badge miss commit
+            "<div class='pull-right fixed-width-small'><span class='btn-link pull-right' data-toggle='tooltip' data-placement='top' title='" + (oBranch.pullRequest ? oBranch.pullRequest.title : "") + "'>" + (oBranch.pullRequest ? "#"+oBranch.pullRequest.number : "") + "</span></div>" + //pull request
+            "<div class='pull-right'><button type='button' class='btn btn-default btn-xs branch-author'>" + oBranch.lastCommit + "</button></div>" + //last commit author
         "</div>"
     );
 
