@@ -231,66 +231,72 @@ var updateBranchStatus = function(repoIndex, aBranchIndex, current, done) {
         var next = updateBranchStatus.bind(this, repoIndex, aBranchIndex, current + 1, done);
         var repo = config.repository[repoIndex];
         var branch = repo.branch[aBranchIndex[current]];
-        var rebaseRule = getRebaseRule(repo, branch.name); // get the rebase origin from config rules for this branch
-        var rebaseOrigin = rebaseRule ? rebaseRule.from : null;
 
-        branch.status = STATUS.ONGOING;
-        updateInterface();
+        if (branch) {
+            var rebaseRule = getRebaseRule(repo, branch.name); // get the rebase origin from config rules for this branch
+            var rebaseOrigin = rebaseRule ? rebaseRule.from : null;
 
-        if (rebaseRule) {
-            branch.parent = rebaseOrigin;
+            branch.status = STATUS.ONGOING;
+            updateInterface();
 
-            if (rebaseRule.automatic.merge && !branch.merge.token) {
-                branch.merge.token = repo.token;
-            }
+            if (rebaseRule) {
+                branch.parent = rebaseOrigin;
 
-            if (rebaseRule.automatic.rebase && !branch.rebase.token) {
-                branch.rebase.token = repo.token;
-            }
-
-            // checkout on branch
-            gitCli.checkout(repo.name, branch.name, function() {
-                // if a recover asked on this branch, reset it from backup and push on origin
-                if (branch.recover.token) {
-                    gitApi.getUser(branch.recover.token, function(error, user) {
-                        gitCli.recover(repo, branch.name, branch.recover.token, function() {
-                            branch.status = STATUS.UNCHECKED;
-                            branch.recover.token = null;
-                            // re check the current branch after the recover
-                            updateBranchStatus(repoIndex, aBranchIndex, current, done);
-                        });
-                        addToHistory(user, "recover " + branch.name);
-                    });
-                } else {
-                    refreshBranch(repo, branch, function(refreshError) {
-                        if (refreshError) {
-                            branch.status = STATUS.UNCHECKED;
-                            next();
-                        } else {
-                            tryRebase(repo, branch, function(rError, rUpToDate) {
-                                tryMerge(repo, branch, function(mError, mUpToDate) {
-
-                                    if (rError && mError) {
-                                        branch.status = STATUS.REBASE_FAILED;
-                                        gitApi.createIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name, "conflict detected with " + branch.parent);
-                                    } else if (!mUpToDate && !rUpToDate) {
-                                        branch.status = STATUS.NEED_REBASE;
-                                        gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
-                                    } else {
-                                        branch.status = STATUS.UP_TO_DATE;
-                                        gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
-                                    }
-
-                                    next();
-                                });
-                            });
-                        }
-                    });
+                if (rebaseRule.automatic.merge && !branch.merge.token) {
+                    branch.merge.token = repo.token;
                 }
-            });
+
+                if (rebaseRule.automatic.rebase && !branch.rebase.token) {
+                    branch.rebase.token = repo.token;
+                }
+
+                // checkout on branch
+                gitCli.checkout(repo.name, branch.name, function() {
+                    // if a recover asked on this branch, reset it from backup and push on origin
+                    if (branch.recover.token) {
+                        gitApi.getUser(branch.recover.token, function(error, user) {
+                            gitCli.recover(repo, branch.name, branch.recover.token, function() {
+                                branch.status = STATUS.UNCHECKED;
+                                branch.recover.token = null;
+                                // re check the current branch after the recover
+                                updateBranchStatus(repoIndex, aBranchIndex, current, done);
+                            });
+                            addToHistory(user, "recover " + branch.name);
+                        });
+                    } else {
+                        refreshBranch(repo, branch, function(refreshError) {
+                            if (refreshError) {
+                                branch.status = STATUS.UNCHECKED;
+                                next();
+                            } else {
+                                tryRebase(repo, branch, function(rError, rUpToDate) {
+                                    tryMerge(repo, branch, function(mError, mUpToDate) {
+
+                                        if (rError && mError) {
+                                            branch.status = STATUS.REBASE_FAILED;
+                                            gitApi.createIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name, "conflict detected with " + branch.parent);
+                                        } else if (!mUpToDate && !rUpToDate) {
+                                            branch.status = STATUS.NEED_REBASE;
+                                            gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
+                                        } else {
+                                            branch.status = STATUS.UP_TO_DATE;
+                                            gitApi.closeIssueOnRepo(repo.token, repo.owner, repo.name, "[GRebase] " + branch.name);
+                                        }
+
+                                        next();
+                                    });
+                                });
+                            }
+                        });
+                    }
+                });
+            } else {
+                branch.status = STATUS.UNCHECKED;
+                next();
+            }
         } else {
-            branch.status = STATUS.UNCHECKED;
-            next();
+            // branch does not exist anymore, deleted ? go next
+            done();
         }
     } else {
         done();
