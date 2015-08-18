@@ -120,7 +120,7 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
 
     var pollRequest = function() {
         exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/events", null, etag, function(error, events, response) {
-            if (!error) {
+            if (!error && events && events.length) {
                 var h = response.headers;
                 var time =  parseInt(h["x-poll-interval"], 10);
                 var ntag = h.etag;
@@ -152,7 +152,7 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
             } else {
                 // if error, retry it
                 logger.log(true, ["loopPollForRepoEvent", error]);
-                loopPollForRepoEvent(accessToken, owner, repo);
+                setTimeout(pollRequest, 60 * 1000);
             }
         });
     }
