@@ -151,7 +151,9 @@ var loopPollForRepoEvent = function(accessToken, owner, repo) {
                 setTimeout(pollRequest, pollOngoing[repo] * 1000);
             } else {
                 // if error, retry it
-                logger.log(true, ["loopPollForRepoEvent", error]);
+                if (error) {
+                    logger.log(true, ["loopPollForRepoEvent", error]);
+                }
                 setTimeout(pollRequest, 60 * 1000);
             }
         });
