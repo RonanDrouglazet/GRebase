@@ -237,8 +237,8 @@ var showBranchActions = function() {
 var ask = function() {
     var data = $('.modalAsk').data();
     var type = this.className.split(" ")[0];
-    window.open("/ask/" + type + "/" + data.oBranch.name + "/" + data.oProject.name, "", "width=1050, height=700, scrollbars=1");
-    console.log("/ask/" + type + "/" + data.oBranch.name + "/" + data.oProject.name);
+    window.open("/ask/" + type + "/" + encodeURIComponent(data.oBranch.name) + "/" + data.oProject.name, "", "width=1050, height=700, scrollbars=1");
+    console.log("/ask/" + type + "/" + encodeURIComponent(data.oBranch.name) + "/" + data.oProject.name);
     $('.modalAsk').modal('hide');
 }
 
