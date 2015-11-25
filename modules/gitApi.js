@@ -47,7 +47,7 @@ exports.oauth = function(req, res, done) {
 }
 
 exports.getAllBranch = function(accessToken, owner, repo, done) {
-    exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/branches", null, null, done);
+    exports.gitHubApiRequest(accessToken, "GET", "/repos/" + owner + "/" + repo + "/branches?per_page=100", null, null, done);
 }
 
 exports.getBranch = function(accessToken, owner, repo, branch, done) {
