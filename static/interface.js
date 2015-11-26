@@ -71,15 +71,37 @@ var getBranchData = function(project, branch) {
     }
 }
 
+var onCheck = function() {
+    var id = $(this).next().html();
+    var hr = JSON.parse(localStorage.getItem('hidden_repo')) || [];
+
+    if (this.checked) {
+        $("#" + id).fadeIn()
+        hr.splice(hr.indexOf(id) - 1, 1)
+    } else {
+        $("#" + id).fadeOut()
+        hr.push(id)
+    }
+
+    localStorage.setItem('hidden_repo', JSON.stringify(hr))
+}
+
 // get or create project container
 var getProjectContainer = function(project) {
     var container = document.getElementById(project.name);
+    var hr = JSON.parse(localStorage.getItem('hidden_repo')) || [];
+    var hidden = hr.indexOf(project.name) !== -1
+
     if (!container) {
-        $(".main").append("<div id='[PN]'><h2 class='sub-header'>[PN]".replace(/\[PN\]/ig, project.name) +
+        $(".main").append(
+            "<div id='" + project.name + "' style='display:" + (hidden ? 'none' : 'block') + "'><h2 class='sub-header'>" + project.name +
             "<span class='glyphicon glyphicon-new-window' data-toggle='tooltip' data-placement='right' title='open repository'></span>" +
             "<span class='glyphicon glyphicon-refresh' data-toggle='tooltip' data-placement='right' title='refresh project&#39;s branches'></span></h2>" +
             "<div class='table-responsive'><div class='danger'></div><div class='warning'></div><div class='success'></div><div class='default'></div></div></div>");
-        $(".nav-sidebar").append("<li><a href='#[PN]'>[PN]</a></li>".replace(/\[PN\]/ig, project.name));
+        
+        $(".nav-sidebar").append("<li><div class='checkbox'><label><input type='checkbox' " + (hidden ? '' : 'checked') + "><a href='#[PN]'>[PN]</a></label></div></li>".replace(/\[PN\]/ig, project.name));
+        $(".nav-sidebar input").last().on("change", onCheck)
+        
         container = document.getElementById(project.name);
         var openRepo = container.getElementsByClassName('glyphicon-new-window')[0];
         $(openRepo).click(function() {
@@ -92,6 +114,7 @@ var getProjectContainer = function(project) {
         });
         $(refresh).tooltip();
     }
+
     return container;
 }
 
