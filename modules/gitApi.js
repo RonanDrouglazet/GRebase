@@ -38,7 +38,8 @@ exports.EVENTS = {
  */
 exports.oauth = function(req, res, done) {
     if (!req.signedCookies.git_access_token && !req.param("code")) {
-        res.redirect("https://github.com/login/oauth/authorize?redirect_uri=" + appId.client_redirect + req.path + "&scope=repo&client_id=" + appId.client_id + "&state=" + Date.now());
+        var path = req.path.replace('%2F', encodeURIComponent('%2F'))
+        res.redirect("https://github.com/login/oauth/authorize?redirect_uri=" + appId.client_redirect + path + "&scope=repo&client_id=" + appId.client_id + "&state=" + Date.now());
     } else if (req.param("code")) {
         sendResponseForOAuth(req, res, done);
     } else if (req.signedCookies.git_access_token) {
